@@ -46,7 +46,7 @@ in al,dx
 and al,0x88
 cmp al,0x08
 jnz waits
-;硬盘控制器接受完毕
+;硬盘控制器接收完毕
 ;准备复制到内存
 mov ax,SetupSegment
 mov ds,ax
