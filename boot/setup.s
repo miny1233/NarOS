@@ -1,3 +1,4 @@
+;未完成，只是用来测试boot是否正常
 mov ax,0xb800
 mov es,ax
 xor bx,bx

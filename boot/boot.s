@@ -21,7 +21,7 @@ mov bx,ax
 cmp cx,[bx]
 pop bx
 jnz put
-
+;初始化硬盘控制器
 mov dx,0x01F2
 mov al,0x01
 out dx,al
@@ -46,7 +46,8 @@ in al,dx
 and al,0x88
 cmp al,0x08
 jnz waits
-
+;硬盘控制器接受完毕
+;准备复制到内存
 mov ax,SetupSegment
 mov ds,ax
 xor si,si
@@ -57,7 +58,7 @@ in ax,dx
 mov [si],ax
 add si,2
 loop read
-
+;跳转到Setup程序
 jmp SetupSegment:0x00
 hlt
 
