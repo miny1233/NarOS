@@ -8,18 +8,18 @@ mov cx,0x0000
 put:
 push bx
 mov bx,ax
-mov byte dl,[bx]
+mov byte dx,[bx]
+cmp cx,[bx]
+jz put_end
 pop bx
 mov byte [es:bx],dl
 inc word bx
 mov byte [es:bx],0x30
 inc word ax
 inc word bx
-push bx
-mov bx,ax
-cmp cx,[bx]
-pop bx
-jnz put
+jmp put
+put_end:
+
 ;准备进入保护模式
 cli          ;禁止所有中断
 ;移动内核模块到内存绝对0处
