@@ -1,4 +1,4 @@
-;未完成，只是用来测试boot是否正常
+;显示进入保护模式
 mov ax,0xb800
 mov es,ax
 xor bx,bx
@@ -20,10 +20,62 @@ mov bx,ax
 cmp cx,[bx]
 pop bx
 jnz put
-hlt
+;准备进入保护模式
+cli          ;禁止所有中断
+;移动内核模块到内存绝对0处
+
+;移动完毕
+
+;载入段描述符
+;源操作数指定一个 6 字节的内存位置，其中包含中断描述符表的基地址和限制。(引用自Intel)
+lidt [idt_48]
+lgdt [gdt_48]
+
+;启动A20地址线
+call test_8042
+mov al,0xd1
+out 0x64,al    
+call test_8042
+mov al,0xdf
+out 0x60,al
+call test_8042 ;缓冲器空，A20地址线已启动
+
+;暂时不设置8259A芯片
+
+;进入保护模式，设置PE位
+mov ax,0x0001
+lmsw ax                              ;mov cr0,ax这个不知道为什么跑不了
+jmp 0x00:0x00 ;启动内核
+
+;测试8042状态寄存器，等待输入缓冲为空时，进行写命令
+test_8042:
+in al,0x64
+test al,0x2 ;检查输入缓冲器
+jnz test_8042
+ret
+
+;临时GDT表
+gdt:
+dw 0,0,0,0
+;代码段
+dw 0x07FF ;段限长
+dw 0x0000 ;基地址
+dw 0x9A00 ;只读，可执行
+dw 0x00C0 ;启用粒度，4kb
+;数据段
+dw 0x07FF
+dw 0x0000
+dw 0x9200
+dw 0x00C0
+;IDT寄存器内容（空表）
+idt_48:
+dw 0
+dw 0,0
+;GDT寄存器内容
+gdt_48:
+dw 0x800     ;表长度
+dw gdt,0x9  ;0x9000<<4 + gdt
 
 message:
-db "Hello_World xsOS"
+db "Move to protected mode ..."
 dw 0x0000
-times 510-($-$$) db 0
-dw 0xaa55
