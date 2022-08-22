@@ -43,8 +43,9 @@ call test_8042 ;缓冲器空，A20地址线已启动
 ;暂时不设置8259A芯片
 
 ;进入保护模式，设置PE位
-mov ax,0x0001
-lmsw ax                              ;mov cr0,ax这个不知道为什么跑不了
+mov eax,cr0
+or eax,0x1
+mov cr0,eax ;Intel的建议方法
 jmp 0x00:0x00 ;启动内核
 
 ;测试8042状态寄存器，等待输入缓冲为空时，进行写命令
