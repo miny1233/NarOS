@@ -6,7 +6,7 @@
 ** Use VBoxManage or the VirtualBox Manager GUI to make changes.
 -->
 <VirtualBox xmlns="http://www.virtualbox.org/" version="1.17-windows">
-  <Machine uuid="{55e46da3-c038-44a5-8bae-c98c96efa017}" name="xsOS" OSType="Other_64" snapshotFolder="Snapshots" lastStateChange="2022-08-21T04:31:59Z">
+  <Machine uuid="{55e46da3-c038-44a5-8bae-c98c96efa017}" name="xsOS" OSType="Other" snapshotFolder="Snapshots" lastStateChange="2022-08-23T09:03:33Z">
     <MediaRegistry>
       <HardDisks>
         <HardDisk uuid="{1d9f342e-0d6e-490c-931d-6a6ef97e1fbd}" location="xsOS.vhd" format="VHD" type="Normal"/>
@@ -14,7 +14,7 @@
     </MediaRegistry>
     <ExtraData>
       <ExtraDataItem name="GUI/LastCloseAction" value="PowerOff"/>
-      <ExtraDataItem name="GUI/LastNormalWindowPosition" value="746,302,720,445"/>
+      <ExtraDataItem name="GUI/LastNormalWindowPosition" value="699,374,640,525"/>
     </ExtraData>
     <Hardware>
       <CPU>
@@ -44,7 +44,7 @@
       <RTC localOrUTC="UTC"/>
       <Clipboard/>
       <GuestProperties>
-        <GuestProperty name="/VirtualBox/HostInfo/GUI/LanguageID" value="zh_CN" timestamp="1661056319620918100" flags=""/>
+        <GuestProperty name="/VirtualBox/HostInfo/GUI/LanguageID" value="zh_CN" timestamp="1661245295257133900" flags=""/>
       </GuestProperties>
       <StorageControllers>
         <StorageController name="IDE" type="PIIX3" PortCount="2" useHostIOCache="true" Bootable="true">
