@@ -21,8 +21,7 @@ mov bx,ax
 cmp cx,[bx]
 pop bx
 jnz put
-;复制head程序
-;载入setup程序
+;复制head程序到0x00
 mov dx,0x01F2
 mov al,0x01
 out dx,al
@@ -61,7 +60,7 @@ add si,2
 loop read_t_mem
 
 ;初始化硬盘控制器
-;载入setup程序
+;载入setup程序复制到0x90000
 mov dx,0x01F2
 mov al,0x01
 out dx,al

@@ -29,8 +29,8 @@ cli          ;禁止所有中断
 
 ;载入段描述符
 ;源操作数指定一个 6 字节的内存位置，其中包含中断描述符表的基地址和限制。(引用自Intel)
-lidt [ds:idt_48]
-lgdt [ds:gdt_48]
+lidt [idt_48]
+lgdt [gdt_48]
 
 ;启动A20地址线
 call test_8042
@@ -47,8 +47,7 @@ call test_8042 ;缓冲器空，A20地址线已启动
 mov eax,cr0
 or eax,0x1
 mov cr0,eax ;Intel的建议方法
-[bits 32]
-jmp 0x8:0x00 ;启动内核
+jmp dword 0b1000:0x00 ;启动内核
 
 ;测试8042状态寄存器，等待输入缓冲为空时，进行写命令
 test_8042:
@@ -76,8 +75,8 @@ dw 0
 dw 0,0
 ;GDT寄存器内容
 gdt_48:
-dw 0x800     ;表长度
-dw gdt,0x9  ;0x9000<<4 + gdt
+dw  0x800  ;表长度
+dd  gdt+0x90000  ;0x9000:gdt
 
 message:
 db "Move to protected mode ..."
