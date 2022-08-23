@@ -21,7 +21,47 @@ mov bx,ax
 cmp cx,[bx]
 pop bx
 jnz put
+;复制head程序
+;载入setup程序
+mov dx,0x01F2
+mov al,0x01
+out dx,al
+
+mov dx,0x01F3
+mov al,0x06
+out dx,al
+mov dx,0x01F4
+xor al,al
+out dx,al
+mov dx,0x01f5
+out dx,al
+mov dx,0x01f6
+mov al,0xe0
+;read disk
+mov dx,0x01f7
+mov al,0x20
+out dx,al
+waits_r:
+nop
+in al,dx
+and al,0x88
+cmp al,0x08
+jnz waits_r
+;硬盘控制器接收完毕
+;准备复制到内存
+mov ax,0x00
+mov ds,ax
+xor si,si
+mov cx,256
+mov dx,0x01F0
+read_t_mem:
+in ax,dx
+mov [si],ax
+add si,2
+loop read_t_mem
+
 ;初始化硬盘控制器
+;载入setup程序
 mov dx,0x01F2
 mov al,0x01
 out dx,al
@@ -58,6 +98,7 @@ in ax,dx
 mov [si],ax
 add si,2
 loop read
+
 ;跳转到Setup程序
 jmp SetupSegment:0x00
 hlt

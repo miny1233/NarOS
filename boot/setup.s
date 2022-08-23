@@ -1,14 +1,16 @@
+mov ax,0x9000
+mov ds,ax
 ;显示进入保护模式
 mov ax,0xb800
 mov es,ax
 xor bx,bx
 mov ax,message
-mov cx,0x0000
+mov cx,0x00
 
 put:
 push bx
 mov bx,ax
-mov byte dx,[bx]
+mov byte dl,[bx]
 cmp cx,[bx]
 jz put_end
 pop bx
@@ -19,7 +21,6 @@ inc word ax
 inc word bx
 jmp put
 put_end:
-
 ;准备进入保护模式
 cli          ;禁止所有中断
 ;移动内核模块到内存绝对0处
@@ -28,8 +29,8 @@ cli          ;禁止所有中断
 
 ;载入段描述符
 ;源操作数指定一个 6 字节的内存位置，其中包含中断描述符表的基地址和限制。(引用自Intel)
-lidt [idt_48]
-lgdt [gdt_48]
+lidt [ds:idt_48]
+lgdt [ds:gdt_48]
 
 ;启动A20地址线
 call test_8042
@@ -46,14 +47,15 @@ call test_8042 ;缓冲器空，A20地址线已启动
 mov eax,cr0
 or eax,0x1
 mov cr0,eax ;Intel的建议方法
-jmp 0x00:0x00 ;启动内核
+[bits 32]
+jmp 0x8:0x00 ;启动内核
 
 ;测试8042状态寄存器，等待输入缓冲为空时，进行写命令
 test_8042:
-in al,0x64
-test al,0x2 ;检查输入缓冲器
-jnz test_8042
-ret
+  in al,0x64
+  test al,0x2 ;检查输入缓冲器
+  jnz test_8042
+  ret
 
 ;临时GDT表
 gdt:
