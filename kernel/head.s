@@ -36,5 +36,5 @@ put_end:
 jmp $
 
 message:
-db "A20 Startted"
+db "A20 Started"
 dw 0x00
