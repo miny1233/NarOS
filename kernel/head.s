@@ -15,7 +15,7 @@ mov dword [0x000000],eax
 cmp dword eax,[0x100000]
 jz cheak_a20
 
-;复制main程序到0x200
+;复制kernel到0x200
 mov dx,0x01F2
 mov al,0x01
 out dx,al
