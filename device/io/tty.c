@@ -5,9 +5,8 @@ void tty_init(){
 }
 void tty_write(char* str,unsigned int len){
    for(unsigned int index=0;index<len;index++){
-    *cursor = *(str + index);
-    *(cursor+1) = 0x30;
-    cursor+=2;
+    *(cursor++) = *(str + index);//字符
+    *(cursor++) = 0x30;//属性
    }
 }
 void tty_clear(){

@@ -1,3 +1,5 @@
+;要是不支持Intel汇编就气死了
+.extern main ;声明内核入口
 ;检查A20地址线开启
 [bits 32]
 mov ax,0b10000
@@ -15,7 +17,7 @@ mov dword [0x000000],eax
 cmp dword eax,[0x100000]
 jz cheak_a20
 
-;载入主函数
+;载入主函数(内核启动)
 call main
 
 is_started:
@@ -23,10 +25,12 @@ mov edx,0x64
 cmp eax,edx
 jnz is_started
 
-;A20启动完成
+;内核退出
 xor bx,bx
 mov eax,message
 mov cx,0x00
+
+;eax是第一个参数，传入一个字符串指针
 put:
 push ebx
 mov ebx,eax
@@ -44,5 +48,5 @@ put_end:
 jmp $
 
 message:
-db "A20 Started"
+db "NarOS Stop"
 dw 0x00

@@ -1,4 +1,5 @@
-#define Videos_Mem_Start 0xb8000
+#define Videos_Mem_Start 0xb8000 //显存起始
+//基本输入输出
 void tty_init();
 void tty_write(char* str,unsigned len);
 void tty_clear();
