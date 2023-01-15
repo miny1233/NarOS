@@ -1,9 +1,6 @@
-#include"../device/io/tty.h"
-int main()
+#include"printk.c"
+
+int init()
 {
-  tty_init();//初始化显示设备
-  char h[] = "hello";
-  tty_write(h,5);
-  tty_clear();
-  return 100;
+  printk("Kernel is Started");
 }
