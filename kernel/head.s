@@ -1,4 +1,4 @@
-#要是不支持Intel汇编就气死了
+#要是不支持Intel汇编就气死了（气死了）
 .extern _init 
 #一个小坑，在gnu汇编中calling C 的函数要加下划线
 #声明内核入口
