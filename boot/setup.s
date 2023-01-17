@@ -52,7 +52,7 @@ push 0x00
 push bx ;之前都是从6扇区开始
 call LBA_Read
 inc bx
-cmp bx,128 ;随便设置的
+cmp bx,128 ;读到128扇区，没有什么特殊意义随便设置的（因为目前LBA函数最多只能写64KB内存，而内核小于64KB所以没有任何问题）
 jnz read_kernel
 ;读取完毕
 
