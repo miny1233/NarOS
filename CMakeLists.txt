@@ -7,4 +7,4 @@ add_compile_options(-m32 -nostartfiles -fno-builtin -nostdinc -fno-pic -fno-pie 
 
 project (NarOS)
 
-add_executable(main kernel/main.c)
+add_executable(main kernel/head.s kernel/main.c)

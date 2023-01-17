@@ -43,6 +43,19 @@ call test_8042 ;缓冲器空，A20地址线已启动
 
 ;暂时不设置8259A芯片
 
+;读取内核
+mov bx,0x06 ;从6扇区开始读(已经忘了为什么在6扇区了)
+mov si,0x00 ;从地址0开始写(由于是连续写所以只需设置一次)
+read_kernel:
+push 0x00
+push 0x00
+push bx ;之前都是从6扇区开始
+call LBA_Read
+inc bx
+cmp bx,128 ;随便设置的
+jnz read_kernel
+;读取完毕
+
 ;进入保护模式，设置PE位
 mov eax,cr0
 or eax,0x1
@@ -55,6 +68,51 @@ test_8042:
   test al,0x2 ;检查输入缓冲器
   jnz test_8042
   ret
+
+;LBA28硬盘读取(由于BUG暂时不能一次性读多个扇区)(这个函数应该是LBA24启动目前的内核足够了)
+;.des_mem_addr(si register) .16-23 .8-15 .地址0-7
+LBA_Read:
+;复制head程序到0x00
+mov dx,0x01F2
+mov al,0x01 ;读取的扇区数目(目前的问题是即便设置读取2个扇区等读到后面的扇区后也会全是0)
+out dx,al
+mov dx,0x01F3
+;mov al,0x06
+pop al ;0-7
+out dx,al
+mov dx,0x01F4
+;xor al,al
+pop al ;8-15
+out dx,al
+mov dx,0x01f5
+pop al ;16-23
+out dx,al
+mov dx,0x01f6
+mov al,0xe0 ;LBA MODE (24-27位设置为0)
+;read disk
+out dx,al
+mov dx,0x01f7
+mov al,0x20 ;读命令
+out dx,al
+waits_r:
+nop
+in al,dx
+and al,0x88
+cmp al,0x08 ;准备就绪
+jnz waits_r
+;硬盘控制器接收完毕
+;准备复制到内存
+mov ax,0x00;Segment设置为0,因此目前内核核心组件大小不能超过64KB
+mov ds,ax ;段寄存器不能传入立即数
+mov cx,256 ;一次读2字节,256次读取完成一个扇区
+mov dx,0x01F0
+read_t_mem:
+in ax,dx
+mov [si],ax ;ds配si si由调用方配置
+add si,2
+loop read_t_mem
+ret
+
 
 ;临时GDT表
 gdt:
@@ -79,5 +137,5 @@ dw  0x800  ;表长度
 dd  gdt+0x90000  ;0x9000:gdt
 
 message:
-db "Move to protected mode ..."
+db "Loading Kernel ..."
 dw 0x0000

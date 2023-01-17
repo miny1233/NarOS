@@ -2,5 +2,5 @@
 
 int init()
 {
-  printk("Kernel is Started");
+  printk("Kernel is Started\n");
 }

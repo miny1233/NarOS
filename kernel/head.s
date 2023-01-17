@@ -35,7 +35,7 @@ mov message,%eax
 call put
 hlt
 
-#eax是第一个参数，传入一个字符串指针
+# eax是第一个参数，传入一个字符串指针
 put:
 pushl %ebx
 movl %eax,%ebx
