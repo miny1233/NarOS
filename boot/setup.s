@@ -21,8 +21,18 @@ inc word ax
 inc word bx
 jmp put
 put_end:
+
 ;准备进入保护模式
 cli          ;禁止所有中断
+
+;启动A20地址线
+call test_8042
+mov al,0xd1
+out 0x64,al    
+call test_8042
+mov al,0xdf
+out 0x60,al
+call test_8042 ;缓冲器空，A20地址线已启动
 
 ;移动内核模块到内存绝对0处
 
@@ -45,15 +55,6 @@ jnz read_kernel
 ;源操作数指定一个 6 字节的内存位置，其中包含中断描述符表的基地址和限制。(引用自Intel)
 lidt [idt_48]
 lgdt [gdt_48]
-
-;启动A20地址线
-call test_8042
-mov al,0xd1
-out 0x64,al    
-call test_8042
-mov al,0xdf
-out 0x60,al
-call test_8042 ;缓冲器空，A20地址线已启动
 
 ;暂时不设置8259A芯片
 
