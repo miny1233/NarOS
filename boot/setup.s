@@ -23,7 +23,21 @@ jmp put
 put_end:
 ;准备进入保护模式
 cli          ;禁止所有中断
+
 ;移动内核模块到内存绝对0处
+
+;读取内核
+mov bx,0x06 ;从6扇区开始读(已经忘了为什么在6扇区了)
+mov si,0x00 ;从地址0开始写(由于是连续写所以只需设置一次)
+read_kernel:
+push 0x00
+push 0x00
+push bx ;之前都是从6扇区开始
+call LBA_Read
+inc bx
+cmp bx,128 ;读到128扇区，没有什么特殊意义随便设置的（因为目前LBA函数最多只能写64KB内存，而内核小于64KB所以没有任何问题）
+jnz read_kernel
+;读取完毕
 
 ;移动完毕
 
@@ -42,19 +56,6 @@ out 0x60,al
 call test_8042 ;缓冲器空，A20地址线已启动
 
 ;暂时不设置8259A芯片
-
-;读取内核
-mov bx,0x06 ;从6扇区开始读(已经忘了为什么在6扇区了)
-mov si,0x00 ;从地址0开始写(由于是连续写所以只需设置一次)
-read_kernel:
-push 0x00
-push 0x00
-push bx ;之前都是从6扇区开始
-call LBA_Read
-inc bx
-cmp bx,128 ;读到128扇区，没有什么特殊意义随便设置的（因为目前LBA函数最多只能写64KB内存，而内核小于64KB所以没有任何问题）
-jnz read_kernel
-;读取完毕
 
 ;进入保护模式，设置PE位
 mov eax,cr0
