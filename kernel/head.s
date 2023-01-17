@@ -26,8 +26,7 @@ jz cheak_a20
 call _init
 
 is_started:
-movl $0x64,%edx
-cmp %eax,%edx
+cmp $1,%eax
 jnz is_started
 
 #内核退出
