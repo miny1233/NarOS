@@ -1,20 +1,9 @@
 #include"type.h"
-//系统调用
-typedef void*(*syscall_entry)(void*) //暂时先做只支持一个参数的调用
+//系统调用(调用方)
+void syscall();
 
-//这里声明系统调用函数
-void* fork(void*);
-//这里定义指针
-syscall_entry _syscall_fork;
-
-syscall_entry syscall_List[] = {
-   NULL, //空调用
-   _syscall_fork,
-};
-//已经是内核态了
-void* syscall(u32 syscall_number,void* context)
-{
-    if(sizeof(syscall_List)/sizeof(syscall_entry)<=syscall_number&&syscall_List[syscall_number])return NULL;//错误的调用
-    //执行调用
-    return syscall_List[syscall_number](context);
-}
+//想着用R10寄存器传递数据，但是汇编怎么都过不了，先暂时搁着了
+#define _syscall_1(syscall_num,type1,arg1) \
+asm volatile(""::"d"(syscall_num)); \
+((int(*)(type1))syscall)(arg1)
+#define _syscall_2(syscall_num,type1,type2,arg1,arg2) ((int(*)(type1,type2))(syscall))(arg1,arg2)
