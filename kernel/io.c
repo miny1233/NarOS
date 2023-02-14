@@ -13,7 +13,7 @@ struct
 }PathToBuf[MAXIO];
 
 
-void mount(const char* path){
+__attribute__((fastcall)) void mount(const char* path){
     for(u32 len=0;;path++,len++)
     {
         PathToBuf[usingIO].path[len] = *path;
@@ -24,11 +24,11 @@ void mount(const char* path){
     usingIO++;
 }
 
-void unmount(const char* path){
+__attribute__((fastcall)) void unmount(const char* path){
     return; //先不做回收了
 }
 
-int write(const char* path,void* context){
+__attribute__((fastcall)) int write(const char* path,void* context){
     for(int index=0;index<usingIO;index++)
     {
         const char* goal = path;
@@ -49,7 +49,7 @@ int write(const char* path,void* context){
     }
     return 0;
 }
-int read(const char* path,void* buffer){
+__attribute__((fastcall)) int read(const char* path,void* buffer){
     for(int index=0;index<usingIO;index++)
     {
         const char* goal = path;
