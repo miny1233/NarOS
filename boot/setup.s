@@ -40,12 +40,13 @@ call test_8042 ;缓冲器空，A20地址线已启动
 mov bx,0x06 ;从6扇区开始读(已经忘了为什么在6扇区了)
 mov si,0x00 ;从地址0开始写(由于是连续写所以只需设置一次)
 read_kernel:
+push 0x00 ;这里的调用方式类似cdcel，从右向左入栈
 push 0x00
-push 0x00
-push bx ;之前都是从6扇区开始
+push bh ;之前都是从6扇区开始
+push bl ;bx拆分，因为LBA每个参数是1字节
 call LBA_Read
 inc bx
-cmp bx,128 ;读到128扇区，没有什么特殊意义随便设置的（因为目前LBA函数最多只能写64KB内存，而内核小于64KB所以没有任何问题）
+cmp bx,16384 ;读到16384扇区，方便才这么做的，总计8M (读多了会冲掉本程序)
 jnz read_kernel
 ;读取完毕
 
@@ -104,14 +105,14 @@ cmp al,0x08 ;准备就绪
 jnz waits_r
 ;硬盘控制器接收完毕
 ;准备复制到内存
-mov ax,0x00;Segment设置为0,因此目前内核核心组件大小不能超过64KB
+mov ax,0x00;Segment设置为0,使用esi寻址，无需再配置段寄存器
 mov ds,ax ;段寄存器不能传入立即数
 mov cx,256 ;一次读2字节,256次读取完成一个扇区
 mov dx,0x01F0
 read_t_mem:
 in ax,dx
-mov [si],ax ;ds配si si由调用方配置
-add si,2
+mov [esi],ax ;ds配si si由调用方配置 (这里直接esi，以便访问整个4GB空间，而无需配置段寄存器)
+add esi,2
 loop read_t_mem
 ret
 
