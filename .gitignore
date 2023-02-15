@@ -37,6 +37,8 @@
 *.hex
 *.bin
 build
+.vscode
+.idea
 
 # Debug files
 *.dSYM/
