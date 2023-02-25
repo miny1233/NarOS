@@ -1,7 +1,7 @@
-nasm boot/boot.s -o boot/boot.bin
-nasm boot/setup.s -o boot/setup.bin
-nasm kernel/head.s -o kernel/head.bin
-dd if=boot/boot.bin of=build/xsOS/xsOS.vhd bs=512 count=1
-dd if=boot/setup.bin of=build/xsOS/xsOS.vhd bs=512 count=1 seek=1
-dd if=kernel/head.bin of=build/xsOS/xsOS.vhd count=1 seek=5
+nasm boot/boot.s -o build/boot.bin
+nasm boot/setup.s -o build/setup.bin
+gcc -m32 -nostartfiles -fno-builtin -nostdinc -fno-pic -fno-pie -nostdlib -fno-stack-protector kernel/head.s kernel/main.c -o build/kernel.bin
+dd if=build/boot.bin of=build/c.img bs=512 count=1
+dd if=build/setup.bin of=build/c.img bs=512 count=1 seek=1
+dd if=build/kernel.bin of=build/c.img count=1 seek=2
 PAUSE

@@ -1,5 +1,9 @@
 mov ax,0x9000
 mov ds,ax
+
+mov ax,3
+int 0x10
+
 ;显示进入保护模式
 mov ax,0xb800
 mov es,ax
@@ -37,16 +41,20 @@ call test_8042 ;缓冲器空，A20地址线已启动
 ;移动内核模块到内存绝对0处
 
 ;读取内核
-mov bx,0x06 ;从6扇区开始读(已经忘了为什么在6扇区了)
-mov si,0x00 ;从地址0开始写(由于是连续写所以只需设置一次)
+mov bx,0x03 ;从6扇区开始读(已经忘了为什么在6扇区了) -> 原来LBA模式没开，是CHS模式，怪不得扇区不对
+mov esi,0x00 ;从地址0开始写(由于是连续写所以只需设置一次)
+
 read_kernel:
-push 0x00 ;这里的调用方式类似cdcel，从右向左入栈
-push 0x00
-push bh ;之前都是从6扇区开始
-push bl ;bx拆分，因为LBA每个参数是1字节
-call LBA_Read
+;这里的调用方式类似cdcel，从右向左入栈
+push 0x00;之前都是从6扇区开始
+movzx ax,bh
+push ax;Intel不支持8位的push
+movzx ax,bl
+push ax
+
+;call LBA_Read ;读取内核代码出现重大问题，暂时注掉
+cmp bx,0x50;读到16384扇区，方便才这么做的，总计8M (读多了会冲掉本程序)
 inc bx
-cmp bx,16384 ;读到16384扇区，方便才这么做的，总计8M (读多了会冲掉本程序)
 jnz read_kernel
 ;读取完毕
 
@@ -63,7 +71,11 @@ lgdt [gdt_48]
 mov eax,cr0
 or eax,0x1
 mov cr0,eax ;Intel的建议方法
-jmp dword 0b1000:0x00 ;启动内核
+
+jmp $
+
+jmp dword 0x0:40100 ;启动内核
+
 
 ;测试8042状态寄存器，等待输入缓冲为空时，进行写命令
 test_8042:
@@ -79,35 +91,41 @@ LBA_Read:
 mov dx,0x01F2
 mov al,0x01 ;读取的扇区数目(目前的问题是即便设置读取2个扇区等读到后面的扇区后也会全是0)
 out dx,al
+
 mov dx,0x01F3
-;mov al,0x06
-pop al ;0-7
+pop ax ;0-7 (注意这里的pop只有低8位是有效的，由于Intel不支持8bit的pop)
 out dx,al
+
 mov dx,0x01F4
-;xor al,al
-pop al ;8-15
+pop ax ;8-15
 out dx,al
+
 mov dx,0x01f5
-pop al ;16-23
+pop ax ;16-23
 out dx,al
+
 mov dx,0x01f6
 mov al,0xe0 ;LBA MODE (24-27位设置为0)
-;read disk
 out dx,al
+
+;read disk
 mov dx,0x01f7
 mov al,0x20 ;读命令
 out dx,al
+
 waits_r:
 nop
 in al,dx
 and al,0x88
 cmp al,0x08 ;准备就绪
 jnz waits_r
+
 ;硬盘控制器接收完毕
 ;准备复制到内存
 mov ax,0x00;Segment设置为0,使用esi寻址，无需再配置段寄存器
 mov ds,ax ;段寄存器不能传入立即数
 mov cx,256 ;一次读2字节,256次读取完成一个扇区
+
 mov dx,0x01F0
 read_t_mem:
 in ax,dx
