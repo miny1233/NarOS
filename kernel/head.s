@@ -6,6 +6,8 @@
 
 .section .text
 entry:
+hlt
+
 movl $0b10000,%eax
 movl %eax,%ds
 movl %eax,%es
@@ -24,6 +26,7 @@ jz cheak_a20
 
 # 载入主函数(内核启动)
 call _init
+hlt
 
 is_started:
 cmp $1,%eax
@@ -32,7 +35,9 @@ jnz is_started
 #内核退出
 mov message,%eax
 call put
-hlt
+
+stop:
+jmp stop
 
 # eax是第一个参数，传入一个字符串指针
 put:

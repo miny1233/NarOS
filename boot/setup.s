@@ -39,10 +39,9 @@ out 0x60,al
 call test_8042 ;缓冲器空，A20地址线已启动
 
 ;移动内核模块到内存绝对0处
-
 ;读取内核
-mov bx,0x03 ;从6扇区开始读(已经忘了为什么在6扇区了) -> 原来LBA模式没开，是CHS模式，怪不得扇区不对
-mov esi,0x00 ;从地址0开始写(由于是连续写所以只需设置一次)
+mov bx,0x02 ;从6扇区开始读(已经忘了为什么在6扇区了) -> 原来LBA模式没开，是CHS模式，怪不得扇区不对
+xor esi,esi ;从地址0开始写(由于是连续写所以只需设置一次)
 
 read_kernel:
 ;这里的调用方式类似cdcel，从右向左入栈
@@ -52,29 +51,38 @@ push ax;Intel不支持8位的push
 movzx ax,bl
 push ax
 
-;call LBA_Read ;读取内核代码出现重大问题，暂时注掉
-cmp bx,0x50;读到16384扇区，方便才这么做的，总计8M (读多了会冲掉本程序)
+jmp LBA_Read ;入栈方式有问题，这里目前使用jmp替代call
+
+read_ok:
+
 inc bx
+cmp bx,0x13;结束扇区
+
 jnz read_kernel
 ;读取完毕
 
 ;移动完毕
 
+cli
 ;载入段描述符
 ;源操作数指定一个 6 字节的内存位置，其中包含中断描述符表的基地址和限制。(引用自Intel)
-lidt [idt_48]
+
 lgdt [gdt_48]
+lidt [idt_48]
 
 ;暂时不设置8259A芯片
-
 ;进入保护模式，设置PE位
 mov eax,cr0
 or eax,0x1
 mov cr0,eax ;Intel的建议方法
 
-jmp $
 
-jmp dword 0x0:40100 ;启动内核
+jmp 8:0x400  ;被Bochs蕨烂了，没有IDT直接CPU错误重启
+
+;jmp dword 0x00:0x400 ;启动内核
+
+protect_mode_test:
+jmp protect_mode_test
 
 
 ;测试8042状态寄存器，等待输入缓冲为空时，进行写命令
@@ -132,7 +140,7 @@ in ax,dx
 mov [esi],ax ;ds配si si由调用方配置 (这里直接esi，以便访问整个4GB空间，而无需配置段寄存器)
 add esi,2
 loop read_t_mem
-ret
+jmp read_ok
 
 
 ;临时GDT表
@@ -151,7 +159,7 @@ dw 0x00C0
 ;IDT寄存器内容（空表）
 idt_48:
 dw 0
-dw 0,0
+dd 0
 ;GDT寄存器内容
 gdt_48:
 dw  0x800  ;表长度
