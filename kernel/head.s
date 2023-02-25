@@ -6,8 +6,8 @@
 
 .section .text
 entry:
-hlt
 
+jmp entry
 movl $0b10000,%eax
 movl %eax,%ds
 movl %eax,%es

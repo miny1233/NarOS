@@ -1,9 +1,14 @@
 mov ax,0x9000
 mov ds,ax
+mov fs,ax
+mov gs,ax
+mov es,ax
+mov ss,ax
 
 mov ax,3
 int 0x10
 
+;跳过显示
 ;显示进入保护模式
 mov ax,0xb800
 mov es,ax
@@ -67,17 +72,17 @@ cli
 ;载入段描述符
 ;源操作数指定一个 6 字节的内存位置，其中包含中断描述符表的基地址和限制。(引用自Intel)
 
-lgdt [gdt_48]
-lidt [idt_48]
+lidt [fs:idt_48]
+lgdt [fs:gdt_48]
 
 ;暂时不设置8259A芯片
 ;进入保护模式，设置PE位
+
 mov eax,cr0
 or eax,0x1
 mov cr0,eax ;Intel的建议方法
 
-
-jmp 8:0x400  ;被Bochs蕨烂了，没有IDT直接CPU错误重启
+jmp 8:0x400  ;进入内核
 
 ;jmp dword 0x00:0x400 ;启动内核
 
@@ -142,6 +147,18 @@ add esi,2
 loop read_t_mem
 jmp read_ok
 
+;IDT寄存器内容
+idt_48:
+dw 0
+dd 0
+;GDT寄存器内容
+gdt_48:
+dw  0x800  ;表长度
+dd  gdt+0x90000  ;0x9000:gdt
+
+message:
+db "Loading Kernel ..."
+dw 0x0000
 
 ;临时GDT表
 gdt:
@@ -156,15 +173,5 @@ dw 0x07FF
 dw 0x0000
 dw 0x9200
 dw 0x00C0
-;IDT寄存器内容（空表）
-idt_48:
-dw 0
-dd 0
-;GDT寄存器内容
-gdt_48:
-dw  0x800  ;表长度
-dd  gdt+0x90000  ;0x9000:gdt
 
-message:
-db "Loading Kernel ..."
-dw 0x0000
+idt:
