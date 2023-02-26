@@ -1,5 +1,6 @@
 #include"tty.h"
 #include"../include/type.h"
+#include"../include/memory.h"
 
 #define CRT_ADDR_LINE 0x3d4
 #define CRT_DATA_LINE 0x3d5
@@ -40,6 +41,16 @@ void tty_write(const char* str){
    char *cursor = (void*)Videos_Mem_Start; //80x25
    while(*str!=0)
    {
+    if(high==25)
+    {
+        high--;
+        memcpy((void*)Videos_Mem_Start,(void*)Videos_Mem_Start+160,160*24);
+        for(int i=0;i<80;i++)
+        {
+            *(cursor+2*i + 160 * 24)=0;
+        }
+    }
+
     switch (*str) {
      case '\n':
         width=0;
@@ -50,7 +61,6 @@ void tty_write(const char* str){
         *(cursor + high*160 + width)=*str++;
          width+=2;
          if(!(width%=160))high++;
-         high%=25;
     }
     syc_cursor();
    }
