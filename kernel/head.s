@@ -26,18 +26,22 @@ jz cheak_a20
 
 # 载入主函数(内核启动)
 call _init
-hlt
 
 is_started:
-cmp $1,%eax
+cmp $0x114514,%eax
 jnz is_started
+
+#内核正常退出，关机
+hlt
+
+#下面的代码会触发保护中断，暂时先废弃
 
 #内核退出
 mov message,%eax
 call put
 
 stop:
-jmp stop
+hlt
 
 # eax是第一个参数，传入一个字符串指针
 put:
@@ -50,8 +54,8 @@ popl %ebx
 movb %dl,0xb8000(%ebx)
 incl %ebx
 movb $0x30,0xb8000(%ebx)
-inc %eax
-inc %ebx
+incl %eax
+incl %ebx
 jmp put
 put_end:
 ret

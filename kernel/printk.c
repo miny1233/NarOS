@@ -1,8 +1,5 @@
-void printk(char* str){
-  char *cursor = (void*)0xb8000;
-  while(*str!='\0')
-  {
-    *(cursor++) = *(str++);
-    *(cursor++) = 0x30;
-  }
+#include "../device/io/tty.c"
+void printk(const char* str){
+  tty_write(str);
 }
+

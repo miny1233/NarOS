@@ -68,7 +68,6 @@ jnz read_kernel
 
 ;移动完毕
 
-cli
 ;载入段描述符
 ;源操作数指定一个 6 字节的内存位置，其中包含中断描述符表的基地址和限制。(引用自Intel)
 
@@ -82,13 +81,7 @@ mov eax,cr0
 or eax,0x1
 mov cr0,eax ;Intel的建议方法
 
-jmp 8:0x400  ;进入内核
-
-;jmp dword 0x00:0x400 ;启动内核
-
-protect_mode_test:
-jmp protect_mode_test
-
+jmp 8:0x400  ;启动内核
 
 ;测试8042状态寄存器，等待输入缓冲为空时，进行写命令
 test_8042:
@@ -96,7 +89,6 @@ test_8042:
   test al,0x2 ;检查输入缓冲器
   jnz test_8042
   ret
-
 ;LBA28硬盘读取(由于BUG暂时不能一次性读多个扇区)(这个函数应该是LBA24启动目前的内核足够了)
 ;.des_mem_addr(si register) .16-23 .8-15 .地址0-7
 LBA_Read:
@@ -173,5 +165,3 @@ dw 0x07FF
 dw 0x0000
 dw 0x9200
 dw 0x00C0
-
-idt:
