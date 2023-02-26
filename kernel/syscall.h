@@ -1,4 +1,4 @@
-#include"type.h"
+#include"../include/type.h"
 //系统调用(调用方)
 void syscall();
 

@@ -1,12 +1,30 @@
 #include"tty.h"
-#include"../../include/type.h"
+#include"../include/type.h"
+
+#define CRT_ADDR_LINE 0x3d4
+#define CRT_DATA_LINE 0x3d5
+#define CRT_CURSOR_H 0xe
+#define CRT_CURSOR_L 0xf
+
+//io
+void outb(u16 des,u8 value);
+u8 inb(u16 des);
 
 u32 high;
 u32 width;
 
+static inline void syc_cursor()
+{
+    u16 pos = high * 80 + (width>>1);
+    outb(CRT_ADDR_LINE,CRT_CURSOR_L);
+    outb(CRT_DATA_LINE,pos);
+    outb(CRT_ADDR_LINE,CRT_CURSOR_H);
+    outb(CRT_DATA_LINE,pos>>8);
+}
+
 void tty_init(){
     high=0;
-    width =0;
+    width=0;
     u32 v_size = 0;
     char *flag = (void*)Videos_Mem_Start+1; 
     char *cursor = (void*)Videos_Mem_Start;
@@ -23,17 +41,18 @@ void tty_write(const char* str){
    while(*str!=0)
    {
     switch (*str) {
-    case '\n':
+     case '\n':
         width=0;
         high++;
         str++;
         break;
-    default:
+     default:
         *(cursor + high*160 + width)=*str++;
          width+=2;
          if(!(width%=160))high++;
          high%=25;
-    }      
+    }
+    syc_cursor();
    }
 }
 void tty_clear(){

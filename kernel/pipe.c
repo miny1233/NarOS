@@ -1,4 +1,5 @@
-#include"type.h"
+#include"../include/type.h"
+
 #define MAXIO 64
 typedef struct {
     char buffer[1024];

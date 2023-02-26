@@ -14,6 +14,5 @@ __syscall:
  shl $3,%rax
  add %rax,%rbx
  mov (%rbx),%rax
- # mov (%rax),%rax
  jmp *%rax #使用jmp可以不动堆栈来启动目的函数，能够减少很多操作
  ret

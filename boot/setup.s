@@ -31,6 +31,11 @@ inc word bx
 jmp put
 put_end:
 
+;mov ah,02h
+;mov dx,03h
+;int 10h 
+;将光标移动至文本的第1行，第三列 （这里是之前用来验证CRT的测试代码）
+
 ;准备进入保护模式
 cli          ;禁止所有中断
 

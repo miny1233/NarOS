@@ -3,7 +3,7 @@
 // 创建这个C的目的就是方便未来添加各种系统调用
 //
 #include "syscall.h"
-#include "io.c"
+#include "pipe.c"
 
 typedef void *syscall_entry; //暂时先做只支持一个参数的调用
 
