@@ -66,7 +66,7 @@ jmp LBA_Read ;入栈方式有问题，这里目前使用jmp替代call
 read_ok:
 
 inc bx
-cmp bx,0x13;结束扇区
+cmp bx,0x32;结束扇区
 
 jnz read_kernel
 ;读取完毕
@@ -86,7 +86,7 @@ mov eax,cr0
 or eax,0x1
 mov cr0,eax ;Intel的建议方法
 
-jmp 8:0x400  ;启动内核
+jmp 8:0 ;启动内核
 
 ;测试8042状态寄存器，等待输入缓冲为空时，进行写命令
 test_8042:

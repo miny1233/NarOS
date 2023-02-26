@@ -9,11 +9,12 @@ set BUILD_FLAG= -m32 -nostartfiles -fno-builtin -nostdinc -fno-pic -fno-pie -nos
 set SOURSE=kernel/head.s device/io.s kernel/main.c
 
 gcc %BUILD_FLAG% %SOURSE% -o build/kernel.bin
+objcopy -O binary build/kernel.bin
 
 echo 编译完成，正在写入
 dd if=build/boot.bin of=build/c.img bs=512 count=1
 dd if=build/setup.bin of=build/c.img bs=512 count=1 seek=1
-dd if=build/kernel.bin of=build/c.img bs=512 count=10 seek=2
+dd if=build/kernel.bin of=build/c.img bs=512 count=50 seek=2
 
 echo 请检查是否存在错误，按下Enter后启动系统
 PAUSE

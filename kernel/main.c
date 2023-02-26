@@ -4,7 +4,7 @@
 
 //没有底层操作系统，初始化变量是无效的
 int offset;
-char tmp[128];
+static char tmp[128] = "ok xdm";
 
 void outb(u16 des,u8 value);
 u8 inb(u16 des);
@@ -12,11 +12,16 @@ u8 inb(u16 des);
 int init()
 {
   char str[] = "Welcome to NarOS !\n"; 
-  char shell[] = "[root@miny1233]# cat /dev/tty";
+  char shell[] = "[root@miny1233]#\n";
   tty_init();
   printk(str);
   printk(shell);
-  
+
+  printk((char*) 0x1180);
+  printk("hello world");
+
+  return 0x114514;
+
   //滚屏测试
   char test[] = "The number is:";
   u16 count=0;
