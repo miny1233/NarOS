@@ -1,4 +1,4 @@
-#include"../include/type.h"
+#include<type.h>
 
 #define MAXIO 64
 typedef struct {

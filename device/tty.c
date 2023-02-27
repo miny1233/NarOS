@@ -1,6 +1,6 @@
-#include"tty.h"
-#include"../include/type.h"
-#include"../include/memory.h"
+#include<device/tty.h>
+#include<type.h>
+#include<memory.h>
 
 #define CRT_ADDR_LINE 0x3d4
 #define CRT_DATA_LINE 0x3d5

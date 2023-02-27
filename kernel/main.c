@@ -1,5 +1,4 @@
-#include "../include/string.h"
-#include "../device/keyboard.c"
+#include <type.h>
 #include "printk.c"
 
 void outb(u16 des,u8 value);
