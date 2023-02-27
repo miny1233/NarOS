@@ -26,7 +26,7 @@ cheak_a20:
  call _init
 
 is_started:
- cmp $0x114514,%eax
+ cmp $0,%eax
  jnz is_started
 
 #内核正常退出，关机

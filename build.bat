@@ -7,8 +7,11 @@ nasm boot/setup.s -o build/setup.bin
 echo 编译kernel
 set BUILD_FLAG= -m32 -nostartfiles -fno-builtin -nostdinc -fno-pic -fno-pie -nostdlib -fno-stack-protector
 set SOURSE=kernel/head.s device/io.s kernel/main.c
+set REDIRECT= -Ttext 0
 
-gcc %BUILD_FLAG% %SOURSE% -o build/kernel.bin
+gcc %REDIRECT% %BUILD_FLAG% %SOURSE% -o build/kernel.bin
+echo 重定向内存
+echo 展开bss段
 objcopy -O binary build/kernel.bin
 
 echo 编译完成，正在写入
