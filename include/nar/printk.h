@@ -1,0 +1,1 @@
+void printk(const char* str);

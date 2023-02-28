@@ -1,5 +1,6 @@
 #include <type.h>
-#include "printk.c"
+#include <device/tty.h>
+#include <nar/printk.h>
 
 void outb(u16 des,u8 value);
 u8 inb(u16 des);

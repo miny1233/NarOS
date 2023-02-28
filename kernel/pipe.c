@@ -1,17 +1,17 @@
 #include<type.h>
+#include <nar/pipe.h>
 
-#define MAXIO 64
 typedef struct {
     char buffer[1024];
     char writed;
 }Buffer;
-Buffer buffer[MAXIO];//最多64个io点，每个1KB缓存
+Buffer buffer[MAXPIPE];//最多64个io点，每个1KB缓存
 size_t usingIO = 0;
 struct
 {
     char path[128];
     Buffer *buffer;
-}PathToBuf[MAXIO];
+}PathToBuf[MAXPIPE];
 
 
 __attribute__((fastcall)) void mount(const char* path){
