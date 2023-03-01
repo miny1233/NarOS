@@ -1,19 +1,19 @@
-.global _outb
-.global _inb
+.global outb
+.global inb
 
 .text
 
-_outb:    # outb(u16 des,u8 value)
+outb:    # outb(u16 des,u8 value)
  push %ebp
  mov %esp,%ebp
 
  movl 8(%ebp),%edx
  movl 12(%ebp),%eax
 
- out %al,%dx
+ out %al,%dx 
  leave
  ret 
-_inb:     # inb(u16 des)
+inb:     # inb(u16 des)
  push %ebp
  mov %esp,%ebp
  movl 8(%ebp),%edx

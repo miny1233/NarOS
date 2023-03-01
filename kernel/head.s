@@ -2,10 +2,10 @@
 .extern _init 
 #一个小坑，在gnu汇编中calling C 的函数要加下划线
 #声明内核入口
-.global entry
+.global _start
 
 .section .text
-entry:
+_start:
  movl $0b10000,%eax
  movl %eax,%ds
  movl %eax,%es
@@ -23,7 +23,7 @@ cheak_a20:
  jz cheak_a20
  
 # 载入主函数(内核启动)
- call _init
+ call init
 
 is_started:
  cmp $0,%eax
