@@ -1,15 +1,12 @@
 #include<device/tty.h>
+#include<device/io.h>
 #include<type.h>
 #include<memory.h>
 
-#define CRT_ADDR_LINE 0x3d4
-#define CRT_DATA_LINE 0x3d5
-#define CRT_CURSOR_H 0xe
-#define CRT_CURSOR_L 0xf
-
-//io
-void outb(u16 des,u8 value);
-u8 inb(u16 des);
+#define CRT_ADDR_LINE 0x3d4 //CRT Address Line
+#define CRT_DATA_LINE 0x3d5 //CRT Data Line
+#define CRT_CURSOR_H 0xe    //Cursor High Bit
+#define CRT_CURSOR_L 0xf    //Cursor Low  Bit
 
 u32 high;
 u32 width;
