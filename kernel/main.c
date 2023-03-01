@@ -1,6 +1,8 @@
 #include <type.h>
 #include <device/tty.h>
 #include <nar/printk.h>
+#include <nar/debug.h>
+#include <nar/interrupt.h>
 
 void outb(u16 des,u8 value);
 u8 inb(u16 des);
@@ -10,7 +12,10 @@ int init()
   tty_init();
   printk("Welcom to NarOS\n");
   printk("test test test\n");
+  interrupt_init();
+  while(1);
 
+  return 0;
   //滚屏测试  
   u16 count=0;
   for(char i=0;i<=10;i++)

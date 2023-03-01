@@ -58,9 +58,6 @@ mov [si],ax
 add si,2
 loop read
 
-xchg bx,bx ;魔术断点
-
-
 ;打印状态
 mov ax,0xb800
 mov es,ax

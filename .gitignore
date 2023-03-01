@@ -36,9 +36,6 @@
 *.x86_64
 *.hex
 *.bin
-build
-.vscode
-.idea
 
 # Debug files
 *.dSYM/
@@ -54,3 +51,10 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+# ide file
+.cache
+build
+.vscode
+.idea
+

@@ -31,7 +31,7 @@ objcopy -O binary NarOS kernel.bin
 
 echo Enter any key to continue
 
-pause
+# pause
 
 echo Writing to Disk
 
@@ -41,4 +41,5 @@ dd if=kernel.bin of=c.img bs=512 count=50 seek=2 conv=notrunc
 
 echo Running Bochs
 
-bochs -q
+# rm -f c.img.lock
+# bochs -q
