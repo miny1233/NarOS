@@ -1,4 +1,4 @@
-#include"../include/type.h"
+#include<type.h>
 typedef struct
 {
     u16 offset0;    // 段内偏移 0 ~ 15 位
