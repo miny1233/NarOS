@@ -1,4 +1,6 @@
 #include<type.h>
+#include<nar/printk.h>
+#include<device/io.h>
 typedef struct
 {
     u16 offset0;    // 段内偏移 0 ~ 15 位
@@ -19,15 +21,9 @@ typedef struct pointer
 
 void task_init()
 {
-
-}
-
-void load_idt()
-{
-
-}
-
-void load_gdt()
-{
-
+    printk("[task]Open Clock\n");
+    u16 hz = 1193182/1000;
+    outb(0x43,0b00110100);
+    outb(0x40,hz&0xff);
+    outb(0x42,hz>>8);
 }

@@ -19,7 +19,8 @@ aux_source_directory(./kernel KERNEL)
 aux_source_directory(./device DEVICE)
 
 add_executable(NarOS ./kernel/head.s 
-                     ./kernel/syscall.s 
+                     ./kernel/syscall.s
+                     ./kernel/interrupt.s 
                      ./device/io.s 
                      ${DEVICE} 
                      ${KERNEL})  

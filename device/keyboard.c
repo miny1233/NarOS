@@ -1,4 +1,6 @@
 #include"../include/type.h"
+#include <nar/interrupt.h>
+#include <nar/printk.h>
 
 #define KEYBOARD_DATA_PORT 0x60
 #define KEYBOARD_CTRL_PORT 0x64
@@ -244,6 +246,8 @@ static void keyboard_wait()
 
 void keyboard_handler()
 {
+
+    send_eoi(0x21);
     // 接收扫描码
     u16 scancode = inb(KEYBOARD_DATA_PORT);
     u8 ext = 2; // keymap 状态索引，默认没有 shift 键
@@ -322,6 +326,7 @@ void keyboard_handler()
 
     if (ch == INV)
         return;
-    char test[] = {ch,'\n',0};
+    char test[] = {ch,0};
+    printk(test);
     // LOGK("keydown %c \n", ch);
 }

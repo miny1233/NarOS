@@ -1,6 +1,6 @@
 #include"../include/type.h"
 //系统调用(调用方)
-void syscall();
+u32 syscall();
 
 //想着用R10寄存器传递数据，但是汇编怎么都过不了，先暂时搁着了
 #define _syscall_1(syscall_num,type1,arg1) \
