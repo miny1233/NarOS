@@ -50,6 +50,8 @@ void pic_init()
 
 extern void interrupt_process(); 
 
+extern u32 *handler_entry_table;
+
 void interrupt_init()
 {
     printk("[interrupt]Init PIC\n");
@@ -57,8 +59,8 @@ void interrupt_init()
 
     printk("[interrupt]Set IDT NOW\n");
     gate_t idt_s;
-    idt_s.offset0 = (u32)interrupt_process & 0xffff;
-    idt_s.offset1 = ((u32)interrupt_process>>16) & 0xffff;
+    idt_s.offset0 = (u32)handler_entry_table[0] & 0xffff;
+    idt_s.offset1 = ((u32)handler_entry_table[0]>16) & 0xffff;
     idt_s.selector = 0x8; //Kernel Segment
     idt_s.reserved = 0;//keep zero
     idt_s.type = 0b1110;//int gate

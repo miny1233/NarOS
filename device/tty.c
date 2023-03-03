@@ -34,11 +34,11 @@ void tty_init(){
         flag+=2;
     }
 }
-void tty_write(const char* str){
-   char *cursor = (void*)Videos_Mem_Start; //80x25
-   while(*str!=0)
-   {
-    if(high==25)
+
+static inline void ScreenFlush()
+{
+    char *cursor = (void*)Videos_Mem_Start; //80x25
+     if(high==25)
     {
         high--;
         memcpy((void*)Videos_Mem_Start,(void*)Videos_Mem_Start+160,160*24);
@@ -47,7 +47,13 @@ void tty_write(const char* str){
             *(cursor+2*i + 160 * 24)=0;
         }
     }
+}
 
+void tty_write(const char* str){
+   char *cursor = (void*)Videos_Mem_Start; //80x25
+   ScreenFlush();
+   while(*str!=0)
+   { 
     switch (*str) {
      case '\n':
         width=0;
@@ -59,8 +65,10 @@ void tty_write(const char* str){
          width+=2;
          if(!(width%=160))high++;
     }
-    syc_cursor();
+     ScreenFlush();
+     syc_cursor();
    }
+
 }
 void tty_clear(){
     tty_init();

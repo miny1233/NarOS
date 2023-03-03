@@ -1,6 +1,7 @@
 #include<type.h>
 #include<nar/printk.h>
 #include<device/io.h>
+#include <nar/interrupt.h>
 typedef struct
 {
     u16 offset0;    // 段内偏移 0 ~ 15 位
@@ -26,4 +27,10 @@ void task_init()
     outb(0x43,0b00110100);
     outb(0x40,hz&0xff);
     outb(0x42,hz>>8);
+}
+
+void clock_int()
+{
+    send_eoi(0x20);
+    printk("clock \n");
 }
