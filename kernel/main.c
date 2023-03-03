@@ -13,8 +13,8 @@ int init()
   interrupt_init();
   task_init();
   u32 ret = syscall();
-  set_interrupt_mask(0,1); //clock int
- // set_interrupt_mask(1,1); //keyboard int open
+  set_interrupt_mask(1,1); //clock int
+  set_interrupt_mask(1,1); //keyboard int open
 //if(ret==8)printk("called int 0x80");
   printk("Welcom to NarOS\n");
   printk("[root@miny1233]# ");

@@ -5,9 +5,9 @@
 .text
 .macro INTERRUPT_HANDLER vector,sys
 interrupt_handler_\vector:
- xchg %bx,%bx
  pusha
  call interrupt_debug
+ popa
  iret
 .endm
 
@@ -68,6 +68,7 @@ INTERRUPT_HANDLER 0x2d, 0
 INTERRUPT_HANDLER 0x2e, 0#  harddisk1 硬盘主通道
 INTERRUPT_HANDLER 0x2f, 0#  harddisk2 硬盘从通道
 
+
 .data
 .global handler_entry_table
 handler_entry_table:
@@ -119,5 +120,7 @@ handler_entry_table:
     .long interrupt_handler_0x2d
     .long interrupt_handler_0x2e
     .long interrupt_handler_0x2f
+
+
 
 
