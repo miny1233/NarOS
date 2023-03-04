@@ -25,8 +25,10 @@ void task_init()
     printk("[task]Open Clock\n");
     u16 hz = 1193182/1000;
     outb(0x43,0b00110100);
-    outb(0x40,hz&0xff);
-    outb(0x42,hz>>8);
+    outb(0x40,hz);
+    outb(0x40,hz>>8);
+
+    set_interrupt_mask(0,1); //clock int
 }
 
 void clock_int()

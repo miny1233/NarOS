@@ -1,17 +1,28 @@
 .global interrupt_debug
-.global keyboard_handler
-.global clock_int
+.global interrupt_hardler_list
 
 .text
 .macro INTERRUPT_HANDLER vector,sys
 interrupt_handler_\vector:
  pusha
  push $\vector        # 传递中断号
- call keyboard_handler
+ mov $\vector,%ebx
+ shl $2,%ebx
+ add interrupt_hardler_list(%ebx),%eax
+ call *%eax
  pop %eax
  popa
  iret
 .endm
+
+.global default_int_hardler
+default_int_hardler:
+ pusha
+ pushl $0
+ call interrupt_debug
+ pop %eax
+ popa
+ iret
 
 INTERRUPT_HANDLER 0x00, 0#  divide by zero
 INTERRUPT_HANDLER 0x01, 0#  debug

@@ -58,13 +58,21 @@ void tty_write(const char* str){
      case '\n':
         width=0;
         high++;
-        str++;
-        break;
+    break;
+    case '\b':
+         if(width==0)
+         {
+            width=158;
+            high--;
+         }else {width-=2;}
+        *(cursor + high*160 + width)=0;
+    break;
      default:
-        *(cursor + high*160 + width)=*str++;
+        *(cursor + high*160 + width)=*str;
          width+=2;
          if(!(width%=160))high++;
     }
+     str++;
      ScreenFlush();
      syc_cursor();
    }

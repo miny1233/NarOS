@@ -49,6 +49,7 @@ void pic_init()
 }
 
 extern void interrupt_process(); 
+extern void default_int_hardler();
 
 extern u32 handler_entry_table[];
 
@@ -70,6 +71,14 @@ void interrupt_init()
         idt_s.offset1 = (u32)handler_entry_table[interrupt_num]>>16;
         idt[interrupt_num] = idt_s;
     }
+    for(size_t interrupt_num=0x30;interrupt_num<=IDT_SIZE;interrupt_num++)
+    {
+        idt_s.offset0 = (u32)default_int_hardler;
+        idt_s.offset1 = (u32)default_int_hardler>>16;
+        idt[interrupt_num] = idt_s;
+    }
+
+
     idt_48.base = (u32)idt;
     idt_48.limit = sizeof(idt)-1; 
     asm volatile("lidt idt_48");
@@ -77,9 +86,11 @@ void interrupt_init()
     return;
 }
 
-void interrupt_hardler_register()
+u32 interrupt_hardler_list[IDT_SIZE];
+
+void interrupt_hardler_register(u32 int_num,void* handler)
 {
-    
+    interrupt_hardler_list[int_num] = (u32)handler;
 }
 
 
@@ -116,4 +127,15 @@ void set_interrupt_mask(u32 irq, char enable)
     {
         outb(port, inb(port) | (1 << irq));
     }
+}
+
+void interrupt_debug(u32 vector)
+{
+    if(vector==0)
+    {
+        printk("Unkown Int Called\n");
+        return;
+    }
+    send_eoi(vector);
+    printk("0x%x interrupt is called\n",vector);
 }
