@@ -6,7 +6,9 @@
 .macro INTERRUPT_HANDLER vector,sys
 interrupt_handler_\vector:
  pusha
- call interrupt_debug
+ push $\vector        # 传递中断号
+ call keyboard_handler
+ pop %eax
  popa
  iret
 .endm

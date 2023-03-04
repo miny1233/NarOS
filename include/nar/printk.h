@@ -1,1 +1,1 @@
-void printk(const char* str);
+void printk(const char* fmt,...);

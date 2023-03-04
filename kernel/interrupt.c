@@ -58,23 +58,28 @@ void interrupt_init()
     pic_init();
     printk("[interrupt]Set IDT NOW\n");
     gate_t idt_s;
-    idt_s.offset0 = (u32)handler_entry_table[0];
-    idt_s.offset1 = (u32)handler_entry_table[0]>>16;
     idt_s.selector = 0x8; //Kernel Segment
     idt_s.reserved = 0;//keep zero
     idt_s.type = 0b1110;//int gate
     idt_s.segment = 0;//System Segment
     idt_s.DPL = 3;//kernel
     idt_s.present = 1;//avaliable
-    for(size_t i=0;i<IDT_SIZE;i++)
+    for(size_t interrupt_num=0;interrupt_num<=0x2f;interrupt_num++)
     {
-        idt[i] = idt_s;
+        idt_s.offset0 = (u32)handler_entry_table[interrupt_num];
+        idt_s.offset1 = (u32)handler_entry_table[interrupt_num]>>16;
+        idt[interrupt_num] = idt_s;
     }
     idt_48.base = (u32)idt;
     idt_48.limit = sizeof(idt)-1; 
     asm volatile("lidt idt_48");
     asm volatile("sti");//open int
     return;
+}
+
+void interrupt_hardler_register()
+{
+    
 }
 
 
@@ -112,9 +117,3 @@ void set_interrupt_mask(u32 irq, char enable)
         outb(port, inb(port) | (1 << irq));
     }
 }
-
-void interrupt_debug()
-{
-    printk("Unkown Interrupt\n");
-}
-

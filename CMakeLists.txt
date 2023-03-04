@@ -17,10 +17,12 @@ add_compile_options(-Ttext 0 -nostartfiles -fno-builtin -nostdinc -fno-pic -fno-
 
 aux_source_directory(./kernel KERNEL)
 aux_source_directory(./device DEVICE)
+aux_source_directory(./lib LIB)
 
 add_executable(NarOS ./kernel/head.s 
                      ./kernel/syscall.s
                      ./kernel/interrupt.s 
                      ./device/io.s 
                      ${DEVICE} 
-                     ${KERNEL})  
+                     ${KERNEL}
+                     ${LIB})  

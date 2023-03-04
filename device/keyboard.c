@@ -244,10 +244,10 @@ static void keyboard_wait()
     } while (state & 0x02); // 读取键盘缓冲区，直到为空
 }
 
-void keyboard_handler()
+void keyboard_handler(u32 vector)
 {
 
-    send_eoi(0x21);
+    send_eoi(vector);
     // 接收扫描码
     u16 scancode = inb(KEYBOARD_DATA_PORT);
     u8 ext = 2; // keymap 状态索引，默认没有 shift 键
@@ -326,7 +326,6 @@ void keyboard_handler()
 
     if (ch == INV)
         return;
-    char test[] = {ch,0};
-    printk(test);
+    printk("%c",ch); //test
     // LOGK("keydown %c \n", ch);
 }
