@@ -32,7 +32,7 @@ typedef struct pointer_t
 gate_t idt[IDT_SIZE];
 pointer_t idt_48;
 
-void pic_init()
+static void pic_init()
 {
     outb(PIC_M_CTRL, 0b00010001); // ICW1: 边沿触发, 级联 8259, 需要ICW4.
     outb(PIC_M_DATA, 0x20);       // ICW2: 起始中断向量号 0x20
