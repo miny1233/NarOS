@@ -7,6 +7,9 @@ typedef int pipe_t;
 void pipe_init(); //给init程序使用，用于启动管道系统
 
 pipe_t pipe_creat(void* buffer);//创建方提供缓存
+
+int pipe_des(pipe_t pipe);
+
 int pipe_close(pipe_t pipe);
 
 int pipe_open(pipe_t pipe); //调用方需要先打开流才能写入，否则操作系统拒绝写入请求

@@ -29,12 +29,19 @@ pipe_t pipe_creat(void *buffer)
     return -1;
 }
 
-int pipe_close(pipe_t pipe)
+int pipe_des(pipe_t pipe)
 {
-    if(pipe>=(unsigned int)pipe_num)return -1;//转uint可以防止通过负数造成内存越界
+    if(pipe>=(unsigned int)pipe_num)return -1;
     pipe_list[pipe].buffer = NULL;
     pipe_list[pipe].lock = 0;
     pipe_list[pipe].used = 0;
+    return pipe;
+}
+
+int pipe_close(pipe_t pipe)
+{
+    if(pipe>=(unsigned int)pipe_num)return -1;//转uint可以防止通过负数造成内存越界
+    pipe_list[pipe].lock = 0;
     return pipe;
 }
 
