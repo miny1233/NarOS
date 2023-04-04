@@ -1,73 +1,56 @@
-#include<type.h>
 #include <nar/pipe.h>
 
-typedef struct {
-    char buffer[1024];
-    char writed;
-}Buffer;
-Buffer buffer[MAXPIPE];//最多64个io点，每个1KB缓存
-size_t usingIO = 0;
-struct
+struct{
+    char used;
+    char lock;
+    void* buffer;
+}pipe_list[64];
+
+void pipe_init()
 {
-    char path[128];
-    Buffer *buffer;
-}PathToBuf[MAXPIPE];
-
-
-__attribute__((fastcall)) void mount(const char* path){
-    for(u32 len=0;;path++,len++)
+    for(int i=0;i<pipe_num;i++)
     {
-        PathToBuf[usingIO].path[len] = *path;
-        if(*path=='\0')break;
+      pipe_list[i].used = 0;
+      pipe_list[i].lock = 0; //这个地方应该记录PID，但是进程调度还没弄好
+      pipe_list[i].buffer = NULL;
     }
-    PathToBuf[usingIO].buffer = &buffer[usingIO];
-    PathToBuf[usingIO].buffer->writed=0;
-    usingIO++;
 }
 
-__attribute__((fastcall)) void unmount(const char* path){
-    return; //先不做回收了
-}
-
-__attribute__((fastcall)) int write(const char* path,void* context){
-    for(int index=0;index<usingIO;index++)
+pipe_t pipe_creat(void *buffer)
+{
+    for(pipe_t pd=0;pd<pipe_num;pd++)
     {
-        const char* goal = path;
-        for(char* ptr = PathToBuf[index].path;;ptr++,goal++)
+        if(pipe_list[pd].used == 0)
         {
-            if(*ptr!=*goal)goto end;;
-            if(*ptr=='\0'&&*goal=='\0')break;
+            pipe_list[pd].used=1;
+            return pd;
         }
-        if(PathToBuf[index].buffer->writed == 1)return 0;
-        u32 *cache = (u32*)PathToBuf[index].buffer;
-        for(u32 count=0;count<256;count++,cache++){
-            *cache = ((u32*)context)[count];
-        }
-        PathToBuf[index].buffer->writed = 1;
-        return 1;
-        end:
-        continue;
     }
-    return 0;
+    return -1;
 }
-__attribute__((fastcall)) int read(const char* path,void* buffer){
-    for(int index=0;index<usingIO;index++)
-    {
-        const char* goal = path;
-        for(char* ptr = PathToBuf[index].path;;ptr++,goal++)
-        {
-            if(*ptr!=*goal)goto end;
-            if(*ptr=='\0'&&*goal=='\0')break;
-        }
-        if(PathToBuf[index].buffer->writed == 0)return 0;
-        u32 *cache = (u32*)PathToBuf[index].buffer;
-        for(u32 count=0;count<256;count++,cache++){
-            ((u32*)buffer)[count] = *cache;
-        }
-        PathToBuf[index].buffer->writed = 0;
-        return 1;
-        end:
-        continue;
-    }
-    return 0;
+
+int pipe_close(pipe_t pipe)
+{
+    if(pipe>=(unsigned int)pipe_num)return -1;//转uint可以防止通过负数造成内存越界
+    pipe_list[pipe].buffer = NULL;
+    pipe_list[pipe].lock = 0;
+    pipe_list[pipe].used = 0;
+    return pipe;
+}
+
+int pipe_open(pipe_t pipe)
+{
+    if(pipe>=(unsigned int)pipe_num)return -1;
+    if(pipe_list[pipe].used == 0 || pipe_list[pipe].lock == 1)return -1;//未使用或者已占用
+    pipe_list[pipe].lock = 1; //成功，上锁
+    return pipe;
+}
+
+size_t pipe_wirte(pipe_t pipe, void *buffer, size_t len)
+{
+    size_t written = 0;
+    do{
+        ((char*)pipe_list[pipe].buffer)[written] = ((char*)buffer)[written];
+    }while(++written!=len);
+    return written;
 }

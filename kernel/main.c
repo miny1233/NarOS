@@ -17,7 +17,7 @@ int init()
   printk("Welcom to NarOS\n");
   printk("[root@miny1233]#");
   
-  while(1);
+  while(1); //返回会出现错误，暂时先卡在这
   return 0; //这样就能通过EAX判断内核是不是正常退出
 }
 
