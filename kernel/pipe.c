@@ -23,6 +23,7 @@ pipe_t pipe_create(void *buffer)
         if(pipe_list[pd].used == 0)
         {
             pipe_list[pd].used=1;
+            pipe_list[pd].buffer = buffer;
             return pd;
         }
     }
