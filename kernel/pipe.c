@@ -16,7 +16,7 @@ void pipe_init()
     }
 }
 
-pipe_t pipe_creat(void *buffer)
+pipe_t pipe_create(void *buffer)
 {
     for(pipe_t pd=0;pd<pipe_num;pd++)
     {
@@ -29,7 +29,7 @@ pipe_t pipe_creat(void *buffer)
     return -1;
 }
 
-int pipe_des(pipe_t pipe)
+int pipe_destory(pipe_t pipe)
 {
     if(pipe>=(unsigned int)pipe_num)return -1;
     pipe_list[pipe].buffer = NULL;
