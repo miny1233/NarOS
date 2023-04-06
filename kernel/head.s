@@ -13,6 +13,8 @@ _start:
  movl %eax,%gs
  movl %eax,%ss #初始化段寄存器
  movl $0x90000,%esp
+ 
+ movl %esp,%ebp # 初始化栈段,防止下面的call指令产生的eip数据冲掉内核
 
  xorl %eax,%eax
 #检测A20地址开启
