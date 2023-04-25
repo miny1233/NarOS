@@ -1,4 +1,4 @@
-#include"../include/type.h"
+#include"../type.h"
 //系统调用(调用方)
 u32 syscall();
 

@@ -11,8 +11,5 @@ typedef void *syscall_entry; //暂时先做只支持一个参数的调用
 
 //这里定义指针
 syscall_entry syscall_List[] = {
-        mount,
-        unmount,
-        write,
-        read,
+       
 };
