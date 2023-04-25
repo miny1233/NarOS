@@ -59,12 +59,12 @@ void interrupt_init()
     pic_init();
     printk("[interrupt]Set IDT NOW\n");
     gate_t idt_s;
-    idt_s.selector = 0x8; //Kernel Segment
-    idt_s.reserved = 0;//keep zero
-    idt_s.type = 0b1110;//int gate
-    idt_s.segment = 0;//System Segment
-    idt_s.DPL = 3;//kernel
-    idt_s.present = 1;//avaliable
+    idt_s.selector = 0x8;   //系统段
+    idt_s.reserved = 0;     //保留0
+    idt_s.type = 0b1110;    //中断门
+    idt_s.segment = 0;      //系统段
+    idt_s.DPL = 3;          //内核态
+    idt_s.present = 1;      //有效
     for(size_t interrupt_num=0;interrupt_num<=0x2f;interrupt_num++)
     {
         idt_s.offset0 = (u32)handler_entry_table[interrupt_num];
@@ -82,7 +82,7 @@ void interrupt_init()
     idt_48.base = (u32)idt;
     idt_48.limit = sizeof(idt)-1; 
     asm volatile("lidt idt_48");
-    asm volatile("sti");//open int
+    asm volatile("sti");    //打开中断
     return;
 }
 

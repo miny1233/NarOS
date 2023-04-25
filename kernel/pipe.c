@@ -41,7 +41,7 @@ int pipe_destory(pipe_t pipe)
 
 int pipe_close(pipe_t pipe)
 {
-    if(pipe>=(unsigned int)pipe_num)return -1;//转uint可以防止通过负数造成内存越界
+    if(pipe>=(unsigned int)pipe_num)return -1;  //转uint可以防止通过负数造成内存越界
     pipe_list[pipe].lock = 0;
     return pipe;
 }
@@ -49,8 +49,8 @@ int pipe_close(pipe_t pipe)
 int pipe_open(pipe_t pipe)
 {
     if(pipe>=(unsigned int)pipe_num)return -1;
-    if(pipe_list[pipe].used == 0 || pipe_list[pipe].lock == 1)return -1;//未使用或者已占用
-    pipe_list[pipe].lock = 1; //成功，上锁
+    if(pipe_list[pipe].used == 0 || pipe_list[pipe].lock == 1)return -1;    //未使用或者已占用
+    pipe_list[pipe].lock = 1;   //成功，上锁
     return pipe;
 }
 

@@ -12,23 +12,23 @@ typedef struct
     u8 DPL : 2;     // 使用 int 指令访问的最低权限
     u8 present : 1; // 是否有效
     u16 offset1;    // 段内偏移 16 ~ 31 位
-}gate_t;
+}gate_t; // 门描述符
 
 typedef struct pointer
 {
     unsigned short limit; // size - 1
     unsigned int base;
-} __attribute__((packed)) pointer;
+} __attribute__((packed)) pointer; // 这里必须要要告诉编译器不能优化
 
 void task_init()
 {
     printk("[task]Open Clock\n");
-    u16 hz = 1193182/1000;
-    outb(0x43,0b00110100);
-    outb(0x40,hz);
+    u16 hz = 1193182/1000; // 每1ms发出一次中断，这里主要考虑到发出的原始频率是1193182Hz，那么没1193182/1000次所耗时就是1ms
+    outb(0x43,0b00110100); // 固定格式
+    outb(0x40,hz);         
     outb(0x40,hz>>8);
 
-    set_interrupt_mask(0,1); //clock int
+    set_interrupt_mask(0,1); //时钟中断
 }
 
 void clock_int()

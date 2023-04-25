@@ -3,10 +3,16 @@
 #include<type.h>
 #include<memory.h>
 
-#define CRT_ADDR_LINE 0x3d4 //CRT Address Line
-#define CRT_DATA_LINE 0x3d5 //CRT Data Line
-#define CRT_CURSOR_H 0xe    //Cursor High Bit
-#define CRT_CURSOR_L 0xf    //Cursor Low  Bit
+/*
+    这都是陈年老代码了，当时写得太混了，现在不好维护
+    目前能正常跑，就暂时不要多动，之后有时间重构一下
+*/
+
+
+#define CRT_ADDR_LINE 0x3d4 //CRT地址线
+#define CRT_DATA_LINE 0x3d5 //CRT数据线
+#define CRT_CURSOR_H 0xe    //Cursor高位
+#define CRT_CURSOR_L 0xf    //Cursor低位
 
 u32 high;
 u32 width;

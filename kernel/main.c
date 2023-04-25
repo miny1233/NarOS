@@ -11,9 +11,9 @@ int init()
 {
   tty_init();
   interrupt_init();
-//task_init();
+//task_init();  //时钟中断，用于任务调度
   interrupt_hardler_register(0x21,keyboard_handler);
-  set_interrupt_mask(1,1); //keyboard int open
+  set_interrupt_mask(1,1); //启动键盘中断
   printk("Welcom to NarOS\n");
   printk("[root@miny1233]#");
   
