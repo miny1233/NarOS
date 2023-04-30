@@ -4,6 +4,7 @@ mov fs,ax
 mov gs,ax
 mov es,ax
 mov ss,ax
+mov bp,ax
 
 mov ax,3
 int 0x10
@@ -30,11 +31,6 @@ inc word ax
 inc word bx
 jmp put
 put_end:
-
-;mov ah,02h
-;mov dx,03h
-;int 10h 
-;将光标移动至文本的第1行，第三列 （这里是之前用来验证CRT的测试代码）
 
 ;准备进入保护模式
 cli          ;禁止所有中断
@@ -94,6 +90,7 @@ test_8042:
   test al,0x2 ;检查输入缓冲器
   jnz test_8042
   ret
+
 ;LBA28硬盘读取(由于BUG暂时不能一次性读多个扇区)(这个函数应该是LBA24启动目前的内核足够了)
 ;.des_mem_addr(si register) .16-23 .8-15 .地址0-7
 LBA_Read:
