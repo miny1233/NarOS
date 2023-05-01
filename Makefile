@@ -41,9 +41,6 @@ build:
 	nasm boot/boot.s -o $(BUILD)/boot.bin
 	nasm boot/setup.s -o $(BUILD)/setup.bin
 	objcopy -O binary $(BUILD)/nar $(BUILD)/kernel.bin
-	dd if=$(BUILD)/boot.bin   of=$(BUILD)/$(IMG) bs=512 count=1 conv=notrunc
-	dd if=$(BUILD)/setup.bin  of=$(BUILD)/$(IMG) bs=512 count=1 seek=1 conv=notrunc
-	dd if=$(BUILD)/kernel.bin of=$(BUILD)/$(IMG) bs=512 count=50 seek=2 conv=notrunc
 .PHONY:build
 
 clean:
@@ -63,8 +60,12 @@ QEMU_DEBUG:= -s -S
 
 .PHONY: qemu
 qemu: $(IMAGES)
+	make
+	make clean
 	$(QEMU) $(QEMU_DISK_BOOT)
 
 .PHONY: qemud
 qemud: $(IMAGES)
+	make
+	make clean
 	$(QEMU) $(QEMU_DEBUG) $(QEMU_DISK_BOOT)

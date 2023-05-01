@@ -41,7 +41,7 @@ int pipe_destory(pipe_t pipe)
 
 int pipe_close(pipe_t pipe)
 {
-    if(pipe>=(unsigned int)pipe_num)return -1;  //转uint可以防止通过负数造成内存越界
+    if(pipe>=(unsigned int)pipe_num)return -1;  //转uint可以防止负数越界
     pipe_list[pipe].lock = 0;
     return pipe;
 }
@@ -57,6 +57,8 @@ int pipe_open(pipe_t pipe)
 size_t pipe_wirte(pipe_t pipe, void *buffer, size_t len)
 {
     size_t written = 0;
+    if(!len || pipe_list[pipe].used == 0)return 0;//防止使用失效的管道
+
     do{
         ((char*)pipe_list[pipe].buffer)[written] = ((char*)buffer)[written];
     }while(++written!=len);

@@ -1,5 +1,5 @@
 #要是不支持Intel汇编就气死了（气死了）
-.extern _init 
+.extern _init
 #一个小坑，在gnu汇编中calling C 的函数要加下划线
 #声明内核入口
 .global _start
@@ -31,8 +31,7 @@ is_started:
  cmp $0,%eax
  jnz is_started
 
- cli
-#内核正常退出，关机
+#内核初始化完毕，init程序停止
  hlt
 #下面的代码会触发保护中断，暂时先废弃
 
