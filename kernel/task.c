@@ -20,6 +20,12 @@ typedef struct pointer
     unsigned int base;
 } __attribute__((packed)) pointer; // 这里必须要要告诉编译器不能优化
 
+void clock_int(int vector)
+{
+    send_eoi(vector);
+    printk("%x \n",vector);
+}
+
 void task_init()
 {
     printk("[task]Open Clock\n");
@@ -29,10 +35,5 @@ void task_init()
     outb(0x40,hz>>8);
 
     set_interrupt_mask(0,1); //时钟中断
-}
-
-void clock_int()
-{
-    send_eoi(0x20);
-    printk("clock \n");
+    interrupt_hardler_register(0x20, clock_int); //注册中断处理
 }

@@ -2,6 +2,7 @@
 #include<device/io.h>
 #include<type.h>
 #include<memory.h>
+#include<nar/printk.h>
 
 /*
     这都是陈年老代码了，当时写得太混了，现在不好维护
@@ -19,7 +20,7 @@ u32 width;
 
 static inline void syc_cursor()
 {
-    u16 pos = high * 80 + (width>>1);
+    u16 pos = high * 80 + width;
     outb(CRT_ADDR_LINE,CRT_CURSOR_L);
     outb(CRT_DATA_LINE,pos);
     outb(CRT_ADDR_LINE,CRT_CURSOR_H);
@@ -41,48 +42,53 @@ void tty_init(){
     }
 }
 
-static inline void ScreenFlush()
-{
-    char *cursor = (void*)Videos_Mem_Start; //80x25
-     if(high==25)
-    {
-        high--;
-        memcpy((void*)Videos_Mem_Start,(void*)Videos_Mem_Start+160,160*24);
-        for(int i=0;i<80;i++)
-        {
-            *(cursor+2*i + 160 * 24)=0;
-        }
-    }
-}
+typedef struct{
+    char ch;
+    char flag;
+}__attribute__((packed)) pix;
 
 void tty_write(const char* str){
-   char *cursor = (void*)Videos_Mem_Start; //80x25
-   ScreenFlush();
-   while(*str!=0)
-   { 
-    switch (*str) {
-     case '\n':
-        width=0;
-        high++;
-    break;
-    case '\b':
-         if(width==0)
-         {
-            width=158;
-            high--;
-         }else {width-=2;}
-        *(cursor + high*160 + width)=0;
-    break;
-     default:
-        *(cursor + high*160 + width)=*str;
-         width+=2;
-         if(!(width%=160))high++;
+   pix (*screen)[80] = (void*)Videos_Mem_Start;
+   while(*str != '\0')
+   {
+    if(*str < '!' || *str > '~') //控制字符
+    {
+        switch (*str) {
+        case '\n':
+            high++;
+            width=0;
+            break;
+        case ' ':
+            width++;
+            break;
+        case 8:
+            if(width==0)break;
+            screen[high][--width].ch = ' ';
+            break;
+        default:
+            printk("%d",*str);
+        }
+    }else {
+        screen[high][width++].ch = *str;
     }
-     str++;
-     ScreenFlush();
-     syc_cursor();
+    str++;
+    if(width >= 80) //过长
+    {
+        high++;
+        width = 0;
+    }
+    if(high >= 25) //超过宽度
+    {
+        for(int i=1;i < 25;i++)
+        {
+            memcpy(screen[i-1],screen[i],sizeof(pix) * 80);
+            high = 24;
+            width = 0;
+        }
+        for(int i=0;i<80;i++)screen[24][i].ch = ' ';
+    }
+    syc_cursor();
    }
-
 }
 void tty_clear(){
     tty_init();

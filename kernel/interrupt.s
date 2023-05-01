@@ -8,9 +8,9 @@ interrupt_handler_\vector:
  push $\vector        # 传递中断号
  mov $\vector,%ebx
  shl $2,%ebx
- add interrupt_hardler_list(%ebx),%eax
+ mov interrupt_hardler_list(%ebx),%eax
  call *%eax
- pop %eax
+ pop %eax  #维护栈平衡而已 没有特殊意义
  popa
  iret
 .endm

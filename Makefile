@@ -5,6 +5,8 @@ GCC:=i686-elf-gcc
 IMG:=nar.img
 
 CFLAGS:= -m32 					# 32 位的程序
+CFLAGS+= -Ttext 0       		# 代码段从0开始(否则错误的偏移会找不到数据段的内容)
+CFLAGS+= -static       			# Linux下的ld如果没有此参数无法链接
 CFLAGS+= -march=pentium			# pentium 处理器
 CFLAGS+= -fno-builtin			# 不需要 gcc 内置函数
 CFLAGS+= -nostdinc				# 不需要标准头文件
@@ -12,7 +14,6 @@ CFLAGS+= -fno-pic				# 不需要位置无关的代码  position independent code
 CFLAGS+= -fno-pie				# 不需要位置无关的可执行程序 position independent executable
 CFLAGS+= -nostdlib				# 不需要标准库
 CFLAGS+= -fno-stack-protector	# 不需要栈保护
-CFLAGS+= -Ttext 0       		# 代码段从0开始(否则错误的偏移会找不到数据段的内容)
 
 DEBUG:= -g
 
@@ -22,7 +23,7 @@ KERNEL:=$(SRC)/kernel
 DEVICE:=$(SRC)/device
 LIB:=$(SRC)/lib
 
-SOURCE:=$(wildcard $(KERNEL)/*.c $(DEVICE)/*.c $(KERNEL)/*.s $(DEVICE)/*.s $(LIB)/*.c)
+SOURCE:=$(wildcard $(KERNEL)/*.s $(DEVICE)/*.s $(KERNEL)/*.c $(DEVICE)/*.c $(LIB)/*.c) #这里有编译顺序，head.s必须第一个编译
 
 
 build:
@@ -36,7 +37,7 @@ build:
 .PHONY:build
 
 clean:
-	rm -f $(BUILD)/nar $(BUILD)/nar.bin
+	rm -f $(BUILD)/*.bin
 
 
 QEMU:= qemu-system-i386 # 虚拟机
@@ -52,4 +53,12 @@ QEMU_DEBUG:= -s -S
 
 .PHONY: qemu
 qemu: $(IMAGES)
+	make
+	make clean
+	$(QEMU) $(QEMU_DISK_BOOT)
+
+.PHONY: qemud
+qemud: $(IMAGES)
+	make
+	make clean
 	$(QEMU) $(QEMU_DEBUG) $(QEMU_DISK_BOOT)

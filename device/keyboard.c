@@ -246,7 +246,6 @@ static void keyboard_wait()
 
 void keyboard_handler(u32 vector)
 {
-
     send_eoi(vector);
     // 接收扫描码
     u16 scancode = inb(KEYBOARD_DATA_PORT);

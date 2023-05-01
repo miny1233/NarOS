@@ -65,7 +65,6 @@ mov ax,is_readied
 mov cx,0x0
 call put
 
-jmp $
 ;跳转到Setup程序
 jmp SetupSegment:0x00
 
