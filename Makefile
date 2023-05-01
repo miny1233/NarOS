@@ -63,12 +63,8 @@ QEMU_DEBUG:= -s -S
 
 .PHONY: qemu
 qemu: $(IMAGES)
-	make
-	make clean
 	$(QEMU) $(QEMU_DISK_BOOT)
 
 .PHONY: qemud
 qemud: $(IMAGES)
-	make
-	make clean
 	$(QEMU) $(QEMU_DEBUG) $(QEMU_DISK_BOOT)
