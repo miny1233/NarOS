@@ -31,6 +31,7 @@ is_started:
  cmp $0,%eax
  jnz is_started
 
+ cli
 #内核正常退出，关机
  hlt
 #下面的代码会触发保护中断，暂时先废弃

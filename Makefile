@@ -26,6 +26,16 @@ LIB:=$(SRC)/lib
 SOURCE:=$(wildcard $(KERNEL)/*.s $(DEVICE)/*.s $(KERNEL)/*.c $(DEVICE)/*.c $(LIB)/*.c) #这里有编译顺序，head.s必须第一个编译
 
 
+all:
+	$(GCC) $(DEBUG) $(INCLUDE) $(CFLAGS) $(SOURCE) -o $(BUILD)/nar
+	nasm boot/boot.s -o $(BUILD)/boot.bin
+	nasm boot/setup.s -o $(BUILD)/setup.bin
+	objcopy -O binary $(BUILD)/nar $(BUILD)/kernel.bin
+	dd if=$(BUILD)/boot.bin   of=$(BUILD)/$(IMG) bs=512 count=1 conv=notrunc
+	dd if=$(BUILD)/setup.bin  of=$(BUILD)/$(IMG) bs=512 count=1 seek=1 conv=notrunc
+	dd if=$(BUILD)/kernel.bin of=$(BUILD)/$(IMG) bs=512 count=50 seek=2 conv=notrunc
+.PHONY:all
+
 build:
 	$(GCC) $(DEBUG) $(INCLUDE) $(CFLAGS) $(SOURCE) -o $(BUILD)/nar
 	nasm boot/boot.s -o $(BUILD)/boot.bin
