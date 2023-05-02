@@ -1,4 +1,5 @@
 #include <nar/pipe.h>
+#include <nar/printk.h>
 
 struct{
     char used;
@@ -8,6 +9,7 @@ struct{
 
 void pipe_init()
 {
+    printk("[pipe] init pipe");
     for(int i=0;i<pipe_num;i++)
     {
       pipe_list[i].used = 0;
