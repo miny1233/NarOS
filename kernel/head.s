@@ -31,33 +31,6 @@ is_started:
  cmp $0,%eax
  jnz is_started
 
-#内核初始化完毕，init程序停止
- hlt
-#下面的代码会触发保护中断，暂时先废弃
-
-#内核退出
- mov message,%eax
- call put
-
-stop:
+# 初始化结束
  hlt
 
-# eax是第一个参数，传入一个字符串指针
-put:
- pushl %ebx
- movl %eax,%ebx
- movb (%ebx),%dl
- cmpl $0,(%ebx)
- jz put_end
- popl %ebx
- movb %dl,0xb8000(%ebx)
- incl %ebx
- movb $0x30,0xb8000(%ebx)
- incl %eax
- incl %ebx
- jmp put
-put_end:
- ret
-
-message:
-.string "NarOS Stop"
