@@ -9,7 +9,7 @@ struct{
 
 void pipe_init()
 {
-    printk("[pipe] init pipe");
+    printk("[pipe] init pipe\n");
     for(int i=0;i<pipe_num;i++)
     {
       pipe_list[i].used = 0;

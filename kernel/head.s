@@ -6,7 +6,7 @@
 
 .section .text
 _start:
- movl $0b10000,%eax
+ movl $0x10,%eax
  movl %eax,%ds
  movl %eax,%es
  movl %eax,%fs
@@ -20,8 +20,8 @@ _start:
 #检测A20地址开启
 cheak_a20:
  inc %eax
- movl %eax,[0x000000]
- cmpl [0x100000],%eax
+ movl %eax,(0x000000)
+ cmpl (0x100000),%eax
  jz cheak_a20
  
 # 载入主函数(内核启动)
@@ -31,6 +31,8 @@ is_started:
  cmp $0,%eax
  jnz is_started
 
-# 初始化结束
+# 开始负责idle进程
+idle:
  hlt
+ jmp idle
 

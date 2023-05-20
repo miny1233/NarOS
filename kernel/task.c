@@ -9,10 +9,7 @@
 void clock_int(int vector)
 {
     send_eoi(vector);
-    MBP
     asm volatile("jmp $0x30,$0");
-    //似乎不能通过这种方式来切换tss
-    //selector 0x0030 points to a system descriptor and is not supported!
 }
 
 descriptor_t gdt[GDT_SIZE]; // 内核全局描述符表
@@ -78,7 +75,6 @@ void task_init()
     desc->DPL = 0;         // 用于任务门或调用门
     desc->type = 0b1001;   // 32 位可用 tss
 
-    MBP
     asm volatile(
             "ltr %%ax\n" ::"a"(KERNEL_TSS_SELECTOR));
 
