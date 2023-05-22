@@ -9,7 +9,10 @@
 void clock_int(int vector)
 {
     send_eoi(vector);
-    asm volatile("jmp $0x30,$0");
+    static unsigned int count = 0;
+    printk("%d\n",count++);
+    int i = 1e8;
+    while(i--);
 }
 
 descriptor_t gdt[GDT_SIZE]; // 内核全局描述符表
@@ -56,7 +59,7 @@ void task_init()
 
     //设置指针
     gdt_ptr.base = (u32)&gdt;
-    gdt_ptr.limit = sizeof(gdt) - 1; //limit是指index的最大位置，而不是gdt的大小
+    gdt_ptr.limit = sizeof(gdt) - 1; // limit是指index的最大位置，而不是gdt的大小
     asm volatile("lgdt gdt_ptr\n");
 
     //内核任务描述符
@@ -78,13 +81,14 @@ void task_init()
     asm volatile(
             "ltr %%ax\n" ::"a"(KERNEL_TSS_SELECTOR));
 
-    //配置时钟中断
-    u16 hz = 1193182/1000; // 每1ms发出一次中断，这里主要考虑到发出的原始频率是1193182Hz，那么每1193182/1000次所耗时就是1ms
-    outb(0x43,0b00110100); // 固定格式
-    outb(0x40,hz);         
-    outb(0x40,hz>>8);
+    // 配置时钟中断 (BUG:无法调节中断频率)
+    u16 hz = (u16)CLOCK_INT_HZ;   // 振荡器的频率大概是 1193182 Hz
+    // 控制字寄存器 端口号 0x43
+    outb(0x43,0b00110100);  // 计数器 0 先读写低字节后读写高字节 模式2 不使用BCD
+    outb(0x40,hz & 0xff);   // 计数器 0 端口号 0x40，用于产生时钟信号 它采用工作方式 3
+    outb(0x40,(hz >> 8) & 0xff);
 
-    interrupt_hardler_register(0x20, clock_int); //注册中断处理
-    set_interrupt_mask(0,1); //允许时钟中断
+    interrupt_hardler_register(0x20, clock_int);    // 注册中断处理
+    set_interrupt_mask(0,1);    // 允许时钟中断
 
 }

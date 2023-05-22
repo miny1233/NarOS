@@ -16,6 +16,10 @@
 #define USER_CODE_SELECTOR (USER_CODE_IDX << 3 | 0b11)
 #define USER_DATA_SELECTOR (USER_DATA_IDX << 3 | 0b11)
 
+#define CLOCK_INT_COUNT_PER_SECOND 19 // 最小值为每秒19次 小于这个值会越界 值无效
+#define CLOCK_INT_HZ (1193182 / CLOCK_INT_COUNT_PER_SECOND)  // 最大 65535 否则越界
+
+
 // 全局描述符
 typedef struct descriptor_t /* 共 8 个字节 */
 {

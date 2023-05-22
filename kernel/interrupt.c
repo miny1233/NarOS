@@ -93,7 +93,9 @@ void interrupt_hardler_register(u32 int_num,void* handler)
     interrupt_hardler_list[int_num] = (u32)handler;
 }
 
-
+// 通知中断控制器中断结束
+// 进入中断处理后就立即发送 如果当前中断未处理结束下一次中断信号会被CPU阻塞
+// 这种提前通知的方式能够省下中断控制器的处理时间 使中断更加高效
 void send_eoi(int vector)
 {
     if (vector >= 0x20 && vector < 0x28)
