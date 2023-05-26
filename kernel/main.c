@@ -9,10 +9,11 @@
 
 void p()
 {
+    u16 i=0;
     while(1)
     {
+        printk("%u\n",i++);
         for(int i=1e7;i>0;i--);
-        printk("A");
     }
 }
 int init()
@@ -24,11 +25,6 @@ int init()
     interrupt_hardler_register(0x21,keyboard_handler);
     set_interrupt_mask(1,1); //启动键盘中断
     task_create(p);
-    while(1){
-        for(int i=1e7;i>0;i--);
-        printk("B");
-    }
-
     return 0; //初始化完毕，初始化程序变idle程序
 }
 

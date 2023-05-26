@@ -6,10 +6,10 @@
 #include <memory.h>
 #include "nar/debug.h"
 
-task_t *running;
-size_t process_num = 0;
-task_t task_list[128];
-
+task_t *running;        // 当前运行的任务
+size_t process_num = 0; // 累计任务总数 只增不减 也就是说当创建过128个任务就不能创建了 之后会改
+task_t task_list[128];  // 任务列表 所有任务在这里统一管理
+pid_t pid_total = 0;
 
 // 这里面的东西与int_stack有关，修改必须注意
 void clock_int(int vector)
@@ -24,7 +24,7 @@ void stack_init(int_stack* stack,void* entry)
     stack->eip2 = (u32)clock_int + 43;
     stack->ebp1 = (u32)stack + sizeof(int_stack);
     stack->eip1 = 0x311; // 这里应该填上这个 interrupt_handler_0x20+19 未来如果多进程出现问题记得修改
-    stack->vector = 32;
+    stack->vector = 0x20;
     stack->eip = (u32)entry;
     stack->ebp = (u32)stack + sizeof(int_stack);
     stack->esp = stack->ebp;
@@ -33,7 +33,8 @@ void stack_init(int_stack* stack,void* entry)
 }
 
 task_t* task_create(void *entry) {
-    asm("cli");
+    asm("cli"); // 保证原子操作 否则可能会调度出错
+    task_list[process_num].pid = ++pid_total;
     task_list[process_num].next = running->next;
     task_list[process_num].esp = 0x10000;
     task_list[process_num].ebp = 0x10014;
@@ -109,7 +110,7 @@ void task_init()
     asm volatile(
             "ltr %%ax\n" ::"a"(KERNEL_TSS_SELECTOR));
 
-    // 初始进程0
+    // 手动加载进程 0
     task_list[0].pid = 0;
     task_list[0].next = task_list;
     process_num++;
