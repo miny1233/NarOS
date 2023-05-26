@@ -16,7 +16,7 @@
 #define USER_CODE_SELECTOR (USER_CODE_IDX << 3 | 0b11)
 #define USER_DATA_SELECTOR (USER_DATA_IDX << 3 | 0b11)
 
-#define CLOCK_INT_COUNT_PER_SECOND 19 // 最小值为每秒19次 小于这个值会越界 值无效
+#define CLOCK_INT_COUNT_PER_SECOND 20 // 最小值为每秒19次 小于这个值会越界 值无效
 #define CLOCK_INT_HZ (1193182 / CLOCK_INT_COUNT_PER_SECOND)  // 最大 65535 否则越界
 
 
@@ -98,4 +98,43 @@ typedef struct tss_t
     u32 ssp;           // 任务影子栈指针
 }__attribute__((packed)) tss_t;
 
+typedef u32 pid_t;
+
+//  双向循环链表
+typedef struct task_t
+{
+    u32 ebp;
+    u32 esp;
+    struct task_t* next;    // 下一个任务
+    pid_t pid;
+}task_t;
+
+// 中断上下文 (栈是反向生长的)
+// 除了要初始化 ip bp sp 和 特殊寄存器外 都不需要初始化 空出来只为维持栈平衡
+typedef struct {
+    u32 eip2;
+    u32 stack_next;
+    u32 stack_now;
+    u32 u1;
+    u32 u2;
+    u32 ebp1;   // ebp1 eip1 都是 call进 clock_int产生的
+    u32 eip1;   // eip都是固定的，ebp需要计算一下
+    u32 vector;
+    u32 edi;
+    u32 esi;
+    u32 ebp;
+    u32 esp;
+    u32 ebx;
+    u32 edx;
+    u32 ecx;
+    u32 eax;
+    u32 eip;
+    u32 cs;
+    u32 eflags;
+}int_stack;
+
+void schedule(task_t* this,task_t* next); // 定义在schedule.s中
+
 void task_init();
+
+task_t* task_create(void *entry);

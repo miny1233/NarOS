@@ -6,13 +6,41 @@
 #include <memory.h>
 #include "nar/debug.h"
 
+task_t *running;
+size_t process_num = 0;
+task_t task_list[128];
+
+
+// 这里面的东西与int_stack有关，修改必须注意
 void clock_int(int vector)
 {
     send_eoi(vector);
-    static unsigned int count = 0;
-    printk("%d\n",count++);
-    int i = 1e8;
-    while(i--);
+    schedule(running,running->next);
+    running = running->next;
+}
+
+void stack_init(int_stack* stack,void* entry)
+{
+    stack->eip2 = (u32)clock_int + 43;
+    stack->ebp1 = (u32)stack + sizeof(int_stack);
+    stack->eip1 = 0x311; // 这里应该填上这个 interrupt_handler_0x20+19 未来如果多进程出现问题记得修改
+    stack->vector = 32;
+    stack->eip = (u32)entry;
+    stack->ebp = (u32)stack + sizeof(int_stack);
+    stack->esp = stack->ebp;
+    stack->cs = 8;
+    stack->eflags = 582;
+}
+
+task_t* task_create(void *entry) {
+    asm("cli");
+    task_list[process_num].next = running->next;
+    task_list[process_num].esp = 0x10000;
+    task_list[process_num].ebp = 0x10014;
+    running->next = &task_list[process_num++];
+    stack_init((void*)0x10000,entry);
+    asm("sti");
+    return &task_list[process_num];
 }
 
 descriptor_t gdt[GDT_SIZE]; // 内核全局描述符表
@@ -81,7 +109,13 @@ void task_init()
     asm volatile(
             "ltr %%ax\n" ::"a"(KERNEL_TSS_SELECTOR));
 
-    // 配置时钟中断 (BUG:无法调节中断频率)
+    // 初始进程0
+    task_list[0].pid = 0;
+    task_list[0].next = task_list;
+    process_num++;
+    running = &task_list[0];
+
+    // 配置时钟中断
     u16 hz = (u16)CLOCK_INT_HZ;   // 振荡器的频率大概是 1193182 Hz
     // 控制字寄存器 端口号 0x43
     outb(0x43,0b00110100);  // 计数器 0 先读写低字节后读写高字节 模式2 不使用BCD
