@@ -20,6 +20,7 @@ static inline void syc_cursor()
     outb(CRT_ADDR_LINE,CRT_CURSOR_H);
     outb(CRT_DATA_LINE,pos>>8);
 }
+char empty_video[80*2*25];
 
 void tty_init(){
     high=0;
@@ -30,9 +31,11 @@ void tty_init(){
     while(v_size++<80*25)
     {
         *cursor=0;
-        *flag=0x30;
+        //*flag=0x30;
+        *flag=0x07;
         cursor+=2;
         flag+=2;
+        memcpy(empty_video,(void*)Videos_Mem_Start,sizeof(empty_video));
     }
 }
 
@@ -59,8 +62,9 @@ void tty_write(const char* str){
             if(width==0)break;
             screen[high][--width].ch = ' ';
             break;
-        default:
-            printk("%d",*str);
+        case 9:
+            width+=8;
+            break;
         }
     }else {
         screen[high][width++].ch = *str;
@@ -75,7 +79,7 @@ void tty_write(const char* str){
     {
         for(int i=1;i < 25;i++)
         {
-            memcpy(screen[i-1],screen[i],sizeof(pix) * 80);
+            memcpy(screen[i - 1],screen[i], sizeof(pix) * 80);
             high = 24;
             width = 0;
         }
@@ -85,5 +89,8 @@ void tty_write(const char* str){
    }
 }
 void tty_clear(){
-    tty_init();
+    high=0;
+    width=0;
+    syc_cursor();
+    memcpy((void *)Videos_Mem_Start,empty_video,sizeof (empty_video));
 }

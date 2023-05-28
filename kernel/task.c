@@ -1,6 +1,6 @@
-#include<type.h>
-#include<nar/printk.h>
-#include<device/io.h>
+#include <type.h>
+#include <nar/printk.h>
+#include <device/io.h>
 #include <nar/interrupt.h>
 #include <nar/task.h>
 #include <memory.h>

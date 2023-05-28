@@ -1,9 +1,17 @@
 #include <memory.h>
-void memcpy(char* des,char* sou,u32 len)
+void memcpy(void* des,void* sou,u32 len)
 {
-    for(int i=0;i<len;i++)
+    u32 count_32 = len / 32;
+    u32 count_8 = len - count_32;
+    u32* d32=des,*s32 = sou;
+    for(u32 i=0;i < count_32;i++)
     {
-        *des++ = *sou++;
+        *d32++ = *s32++;    // 32位复制
+    }
+    u8 *d8 = (void*)d32,*s8 = (void*)s32;
+    for(u32 i=0;i < count_8;i++)
+    {
+        *d8++ = *s8++;      // 8位复制
     }
 }
 
