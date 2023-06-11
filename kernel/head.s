@@ -11,7 +11,7 @@ _start:
  movl %eax,%fs
  movl %eax,%gs
  movl %eax,%ss #初始化段寄存器
- movl $0x90000,%esp
+ movl $0x90000,%esp # 超过0x90000似乎会撞到一些硬件的地址 使得内核工作不正常
  
  movl %esp,%ebp # 初始化栈段,防止下面的call指令产生的eip数据冲掉内核
 

@@ -100,7 +100,8 @@ typedef struct tss_t
 
 typedef u32 pid_t;
 
-//  双向循环链表
+// 双向循环链表
+// 本来应该是这样，但是暂时用循环链表实现
 typedef struct task_t
 {
     u32 ebp;
@@ -115,7 +116,7 @@ typedef struct {
     u32 eip2;
     u32 stack_next;
     u32 stack_now;
-    u32 u1;
+    u32 u1;     // u1 u2 是两个未知的参数 似乎是编译器进行的内存对齐
     u32 u2;
     u32 ebp1;   // ebp1 eip1 都是 call进 clock_int产生的
     u32 eip1;   // eip都是固定的，ebp需要计算一下
@@ -131,7 +132,7 @@ typedef struct {
     u32 eip;
     u32 cs;
     u32 eflags;
-}int_stack;
+}__attribute__((packed)) int_stack;
 
 void schedule(task_t* this,task_t* next); // 定义在schedule.s中
 

@@ -4,6 +4,8 @@
 #include <nar/interrupt.h>
 #include <nar/task.h>
 #include <memory.h>
+#include <nar/panic.h>
+
 #include "nar/debug.h"
 
 task_t *running;        // 当前运行的任务
@@ -21,9 +23,9 @@ void clock_int(int vector)
 
 void stack_init(int_stack* stack,void* entry)
 {
-    stack->eip2 = (u32)clock_int + 43;
+    stack->eip2 = (u32)clock_int + 43;  //call schedule的下一条语句
     stack->ebp1 = (u32)stack + sizeof(int_stack);
-    stack->eip1 = 0x311; // 这里应该填上这个 interrupt_handler_0x20+19 未来如果多进程出现问题记得修改
+    stack->eip1 = 0x311;                // 这里应该填上这个 interrupt_handler_0x20+19 未来如果多进程出现问题记得修改
     stack->vector = 0x20;
     stack->eip = (u32)entry;
     stack->ebp = (u32)stack + sizeof(int_stack);
@@ -37,7 +39,7 @@ task_t* task_create(void *entry) {
     task_list[process_num].pid = ++pid_total;
     task_list[process_num].next = running->next;
     task_list[process_num].esp = 0x10000;
-    task_list[process_num].ebp = 0x10014;
+    task_list[process_num].ebp = task_list[process_num].esp + 0x14; // 这个位置指向ebp1
     running->next = &task_list[process_num++];
     stack_init((void*)0x10000,entry);
     asm("sti");
@@ -117,6 +119,7 @@ void task_init()
     running = &task_list[0];
 
     // 配置时钟中断
+    assert(CLOCK_INT_COUNT_PER_SECOND >= 19)
     u16 hz = (u16)CLOCK_INT_HZ;   // 振荡器的频率大概是 1193182 Hz
     // 控制字寄存器 端口号 0x43
     outb(0x43,0b00110100);  // 计数器 0 先读写低字节后读写高字节 模式2 不使用BCD
