@@ -2,6 +2,7 @@
 #include <nar/printk.h>
 #include <nar/debug.h>
 #include <device/io.h>
+#include <nar/panic.h>
 #include <type.h>
 
 #define PIC_M_CTRL 0x20 // 主片的控制端口
@@ -135,9 +136,9 @@ void interrupt_debug(u32 vector)
 {
     if(vector==0)
     {
-        printk("Unkown Int Called\n");
+        printk("Unknown Int Called\n");
         return;
     }
     send_eoi(vector);
-    printk("0x%x interrupt is called\n",vector);
+    panic("Unknown Error");
 }

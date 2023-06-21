@@ -26,7 +26,7 @@ void tty_init(){
     high=0;
     width=0;
     u32 v_size = 0;
-    char *flag = (void*)Videos_Mem_Start+1; 
+    char *flag = (void*)Videos_Mem_Start + 1;
     char *cursor = (void*)Videos_Mem_Start;
     while(v_size++<80*25)
     {
