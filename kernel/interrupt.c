@@ -122,14 +122,11 @@ void set_interrupt_mask(u32 irq, char enable)
         port = PIC_S_DATA;
         irq -= 8;
     }
+
     if (enable)
-    {
         outb(port, inb(port) & ~(1 << irq));
-    }
     else
-    {
         outb(port, inb(port) | (1 << irq));
-    }
 }
 
 void interrupt_debug(u32 vector)

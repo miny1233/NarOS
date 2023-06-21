@@ -1,6 +1,7 @@
 #include <nar/mem.h>
 #include <type.h>
 #include <nar/panic.h>
+#include <memory.h>
 
 typedef struct page_entry_t
 {
@@ -19,13 +20,14 @@ typedef struct page_entry_t
 
 u32 memory_base = MEMORY_BASE;
 u32 memory_size = MEMORY_SIZE;
-u32 free_page;
+u32 total_page;
 
 #define IDX(addr) ((u32)addr >> 12) // 取页索引
 #define PAGE(idx) ((u32)idx << 12)  // 取页启始
 
-u8 page_map[MEMORY_SIZE];
-page_entry_t page_table[1024];  // 页表
+u8 page_map[IDX(MEMORY_SIZE)];
+
+page_entry_t* page_table;  // 页目录
 
 static u32 get_cr3(){
     asm volatile("movl %cr3,%eax\n");
@@ -55,8 +57,10 @@ void mapping_init(); // 映射页
 
 void memory_init()
 {
-    free_page = IDX(memory_size);
-    for(size_t index=0;index < memory_size;index++)
+    printk("[mem] memory init\n");
+    total_page = IDX(memory_size);
+    printk("[mem] total page 0x%x\n",total_page);
+    for(size_t index=0;index < total_page;index++)
         page_map[index] = 0;
 
     mapping_init();
@@ -64,7 +68,7 @@ void memory_init()
 
 void* get_page()
 {
-    for(size_t index=0;index < memory_size;index++)
+    for(size_t index=0;index < total_page;index++)
     {
         if(page_map[index] == 0)
         {
@@ -85,5 +89,17 @@ void put_page(void* addr)
 
 void mapping_init()
 {
-    
+    page_table = get_page(); // 取一页内存用作页目录
+    page_entry_t* pte = get_page(); // 取一页内存用作页表
+    memset(page_table,0,PAGE_SIZE); // 全0可以使present为0 便于触发缺页中断
+    memset(pte,0,PAGE_SIZE);
+    printk("[mem] page_table at 0x%x\n",page_table);
+
+    entry_init(&page_table[0],IDX((u32)pte));   // 页目录0->内核页表
+    for(u32 index=0;index < PAGE_SIZE/4; index++)
+    {
+        entry_init(&pte[index],index);   // 映射物理内存在原来的位置
+    }
+    set_cr3((u32)page_table); // cr3指向页目录
+    enable_page();
 }
