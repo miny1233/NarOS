@@ -3,6 +3,7 @@
 #include <device/io.h>
 #include <nar/interrupt.h>
 #include <nar/task.h>
+#include <nar/mem.h>
 #include <memory.h>
 #include <nar/panic.h>
 
@@ -20,28 +21,36 @@ void clock_int(int vector)
     schedule(running,running->next);
     running = running->next;
 }
-
-void stack_init(int_stack* stack,void* entry)
+// 内核程序任务创建
+static void stack_init(int_stack* stack,void* entry)
 {
+    extern u32 interrupt_handler_0x20;
+    // 函数调用产生的栈
     stack->eip2 = (u32)clock_int + 43;  //call schedule的下一条语句
     stack->ebp1 = (u32)stack + sizeof(int_stack);
-    stack->eip1 = 0x311;                // 这里应该填上这个 interrupt_handler_0x20+19 未来如果多进程出现问题记得修改
-    stack->vector = 0x20;
-    stack->eip = (u32)entry;
+    stack->eip1 = 0x311;  // interrupt_handler_0x20+19 填上这个结果后反而出现问题
+    // 中断处理函数创建的栈
+    stack->vector = 0x20;   // 中断号 0x20
     stack->ebp = (u32)stack + sizeof(int_stack);
     stack->esp = stack->ebp;
-    stack->cs = 8;
-    stack->eflags = 582;
+    // Intel中断栈
+    stack->eip = (u32)entry; //eip 指向程序入口，中断返回则直接运行新任务
+    stack->cs = KERNEL_CODE_SELECTOR;
+    stack->eflags = 582; // 默认标记
 }
-
+// 创建任务 需要提供程序入口
 task_t* task_create(void *entry) {
     asm("cli"); // 保证原子操作 否则可能会调度出错
+    // 为新任务设置内存
+    void* start_mem = get_page();   //申请一页内存 4k
+    void* end_mem = start_mem + PAGE_SIZE - 1;  // 页尾
+    stack_init(end_mem - sizeof(int_stack),entry);
+    // 设置进程信息
     task_list[process_num].pid = ++pid_total;
     task_list[process_num].next = running->next;
-    task_list[process_num].esp = 0x10000;
+    task_list[process_num].esp = (u32)end_mem - sizeof(int_stack);
     task_list[process_num].ebp = task_list[process_num].esp + 0x14; // 这个位置指向ebp1
     running->next = &task_list[process_num++];
-    stack_init((void*)0x10000,entry);
     asm("sti");
     return &task_list[process_num];
 }

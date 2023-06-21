@@ -116,7 +116,7 @@ typedef struct {
     u32 eip2;
     u32 stack_next;
     u32 stack_now;
-    u32 u1;     // u1 u2 是两个未知的参数 似乎是编译器进行的内存对齐
+    u32 u1;     // u1 u2 是两个未知的参数 应该是栈变量
     u32 u2;
     u32 ebp1;   // ebp1 eip1 都是 call进 clock_int产生的
     u32 eip1;   // eip都是固定的，ebp需要计算一下

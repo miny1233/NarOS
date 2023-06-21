@@ -1,5 +1,6 @@
 .global interrupt_debug
 .global interrupt_hardler_list
+.global interrupt_handler_0x20
 
 .text
 .macro INTERRUPT_HANDLER vector,sys

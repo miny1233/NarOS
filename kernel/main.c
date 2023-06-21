@@ -14,8 +14,15 @@
 
 void child()
 {
-    while(1);
+    while(1)
+        printk("A");
 }
+void child2()
+{
+    while(1)
+        printk("B");
+}
+
 
 int init()
 {
@@ -29,10 +36,8 @@ int init()
     interrupt_hardler_register(0x21,keyboard_handler);
     set_interrupt_mask(1,1); //启动键盘中断
 
-    //task_create(child); //创建任务
-
-    int* ptr = (void*)0x300000;
-    *ptr = 100;
+    task_create(child); //创建任务
+    task_create(child2);
 
     return 0; //初始化完毕，初始化程序变idle程序
 }
