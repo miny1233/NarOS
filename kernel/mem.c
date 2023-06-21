@@ -1,6 +1,7 @@
 #include <nar/mem.h>
 #include <type.h>
 #include <nar/panic.h>
+#include <nar/interrupt.h>
 #include <memory.h>
 
 typedef struct page_entry_t
@@ -87,8 +88,15 @@ void put_page(void* addr)
     page_map[index] = 0;
 }
 
+void page_int(u32 vector)   // 缺页中断
+{
+    panic("Cannot Find Mem Page\n");
+}
+
 void mapping_init()
 {
+    interrupt_hardler_register(0x0e, page_int); //注册缺页中断
+
     page_table = get_page(); // 取一页内存用作页目录
     page_entry_t* pte = get_page(); // 取一页内存用作页表
     memset(page_table,0,PAGE_SIZE); // 全0可以使present为0 便于触发缺页中断

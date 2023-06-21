@@ -26,7 +26,7 @@ void child2()
 
 int init()
 {
-    tty_init();         // 最早初始化 printk依赖
+    tty_init();         // 最早初始化
     interrupt_init();   // 中断处理
     memory_init();      // 内存管理
     task_init();        // 任务调度
@@ -35,9 +35,6 @@ int init()
     // 外围设备
     interrupt_hardler_register(0x21,keyboard_handler);
     set_interrupt_mask(1,1); //启动键盘中断
-
-    task_create(child); //创建任务
-    task_create(child2);
 
     return 0; //初始化完毕，初始化程序变idle程序
 }
