@@ -19,6 +19,8 @@
 #define CLOCK_INT_COUNT_PER_SECOND 19 // 最小值为每秒19次 小于这个值会越界 值无效
 #define CLOCK_INT_HZ (1193182 / CLOCK_INT_COUNT_PER_SECOND)  // 最大 65535 否则越界
 
+#define MAX_TASK_NUM 128
+
 
 // 全局描述符
 typedef struct descriptor_t /* 共 8 个字节 */
@@ -139,3 +141,5 @@ void schedule(task_t* this,task_t* next); // 定义在schedule.s中
 void task_init();
 
 task_t* task_create(void *entry);
+
+void task_exit();

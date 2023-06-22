@@ -14,15 +14,9 @@
 
 void child()
 {
-    while(1)
-        printk("A");
+    printk("I will exit\n");
+    task_exit();
 }
-void child2()
-{
-    while(1)
-        printk("B");
-}
-
 
 int init()
 {
@@ -31,10 +25,11 @@ int init()
     memory_init();      // 内存管理
     task_init();        // 任务调度
     pipe_init();
-
     // 外围设备
     interrupt_hardler_register(0x21,keyboard_handler);
     set_interrupt_mask(1,1); //启动键盘中断
+
+    task_create(child);
 
     return 0; //初始化完毕，初始化程序变idle程序
 }

@@ -11,7 +11,7 @@
 
 task_t *running;        // 当前运行的任务
 size_t process_num = 0; // 累计任务总数 只增不减 也就是说当创建过128个任务就不能创建了 之后会改
-task_t task_list[128];  // 任务列表 所有任务在这里统一管理
+task_t task_list[MAX_TASK_NUM];  // 任务列表 所有任务在这里统一管理
 pid_t pid_total = 0;
 
 // 这里面的东西与int_stack有关，修改必须注意
@@ -21,40 +21,8 @@ void clock_int(int vector)
     schedule(running,running->next);
     running = running->next;
 }
-// 内核程序任务创建
-static void stack_init(int_stack* stack,void* entry)
-{
-    extern u32 interrupt_handler_0x20;
-    // 函数调用产生的栈
-    stack->eip2 = (u32)clock_int + 43;  //call schedule的下一条语句
-    stack->ebp1 = (u32)stack + sizeof(int_stack);
-    stack->eip1 = 0x311;  // interrupt_handler_0x20+19 填上这个结果后反而出现问题
-    // 中断处理函数创建的栈
-    stack->vector = 0x20;   // 中断号 0x20
-    stack->ebp = (u32)stack + sizeof(int_stack);
-    stack->esp = stack->ebp;
-    // Intel中断栈
-    stack->eip = (u32)entry; //eip 指向程序入口，中断返回则直接运行新任务
-    stack->cs = KERNEL_CODE_SELECTOR;
-    stack->eflags = 582; // 默认标记
-}
-// 创建任务 需要提供程序入口
-task_t* task_create(void *entry) {
-    asm("cli"); // 保证原子操作 否则可能会调度出错
-    // 为新任务设置内存
-    void* start_mem = get_page();   //申请一页内存 4k
-    void* end_mem = start_mem + PAGE_SIZE - 1;  // 页尾
-    stack_init(end_mem - sizeof(int_stack),entry);
-    // 设置进程信息
-    task_list[process_num].pid = ++pid_total;
-    task_list[process_num].next = running->next;
-    task_list[process_num].esp = (u32)end_mem - sizeof(int_stack);
-    task_list[process_num].ebp = task_list[process_num].esp + 0x14; // 这个位置指向ebp1
-    running->next = &task_list[process_num++];
-    asm("sti");
-    return &task_list[process_num];
-}
 
+// 以下是初始化过程
 descriptor_t gdt[GDT_SIZE]; // 内核全局描述符表
 pointer_t gdt_ptr;          // 内核全局描述符表指针
 tss_t tss;                  // 任务状态段
@@ -123,12 +91,12 @@ void task_init()
 
     // 手动加载进程 0
     task_list[0].pid = 0;
-    task_list[0].next = task_list;
-    process_num++;
+    task_list[0].next = &task_list[0];  // 循环链表 自己指向自己
+    process_num=1;  // 似乎出现了问题，process默认不为0
     running = &task_list[0];
 
     // 配置时钟中断
-    assert(CLOCK_INT_COUNT_PER_SECOND >= 19)
+    assert(CLOCK_INT_COUNT_PER_SECOND >= 19);
     u16 hz = (u16)CLOCK_INT_HZ;   // 振荡器的频率大概是 1193182 Hz
     // 控制字寄存器 端口号 0x43
     outb(0x43,0b00110100);  // 计数器 0 先读写低字节后读写高字节 模式2 不使用BCD
@@ -138,4 +106,60 @@ void task_init()
     interrupt_hardler_register(0x20, clock_int);    // 注册中断处理
     set_interrupt_mask(0,1);    // 允许时钟中断
 
+}
+// 初始化中断栈
+static void stack_init(int_stack* stack,void* entry)
+{
+    extern u32 interrupt_handler_0x20;  //时钟中断
+    // 函数调用产生的栈
+    stack->eip2 = (u32)clock_int + 43;  //call schedule的下一条语句
+    stack->ebp1 = (u32)stack + sizeof(int_stack);
+    stack->eip1 = (u32)&interrupt_handler_0x20 + 19;  //需要使用取地址符号 外部声明是u32函数会被当作变量
+    // 中断处理函数创建的栈
+    stack->vector = 0x20;   // 中断号 0x20
+    stack->ebp = (u32)stack + sizeof(int_stack);
+    stack->esp = stack->ebp;
+    // Intel中断栈
+    stack->eip = (u32)entry; //eip 指向程序入口，中断返回则直接运行新任务
+    stack->cs = KERNEL_CODE_SELECTOR;
+    stack->eflags = 582; // 默认标记
+}
+// 创建任务 需要提供程序入口
+task_t* task_create(void *entry) {
+    assert(process_num <= MAX_TASK_NUM); // 任务是否超过最大限度
+    asm("cli"); // 保证原子操作 否则可能会调度出错
+    // 为新任务设置内存
+    void* start_mem = get_page();   //申请一页内存 4k
+    void* end_mem = start_mem + PAGE_SIZE - 1;  // 页尾
+    stack_init(end_mem - sizeof(int_stack),entry);
+
+    for(u32 task_idx=1;task_idx < MAX_TASK_NUM;task_idx++)
+    {
+        if(task_list[task_idx].pid == 0)    //无任务
+        {
+            // 设置进程信息
+            task_list[task_idx].pid = ++pid_total;
+            task_list[task_idx].next = running->next;
+            task_list[task_idx].esp = (u32)end_mem - sizeof(int_stack);
+            task_list[task_idx].ebp = task_list[task_idx].esp + 0x14; // 这个位置指向ebp1
+            running->next = &task_list[task_idx];
+            process_num++;
+            asm("sti");
+            return &task_list[task_idx];
+        }
+    }
+    panic("Have Some Error in Task Create"); // 这个地方理论上不会发生 如果发生那么就是未知错误
+}
+
+void task_exit()
+{
+    asm("cli\n");
+    task_t* back = &task_list[0];// 任务0是常驻任务 从这个地方开始寻找的时间总是比从running开始快得多
+    do{
+       back = back->next;
+    } while (back->next->pid != running->pid);// 找到自己的上一个任务
+    back->next = running->next;
+    running->pid = 0;   //标记任务无效
+    asm("sti\n");
+    asm("int $0x20");   //切换任务
 }

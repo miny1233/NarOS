@@ -84,13 +84,13 @@ void put_page(void* addr)
 {
     assert((u32)addr >= memory_base && (u32)addr < memory_base + memory_size);
     size_t index = IDX(addr);
-    assert(index < memory_size)
+    assert(index < memory_size);
     page_map[index] = 0;
 }
 
 void page_int(u32 vector)   // 缺页中断
 {
-    panic("Cannot Find Mem Page\n");
+    panic("Segment Failed\n");
 }
 
 void mapping_init()
@@ -110,4 +110,9 @@ void mapping_init()
     }
     set_cr3((u32)page_table); // cr3指向页目录
     enable_page();
+}
+
+void mmap(void* addr,void* vaddr)
+{
+
 }
