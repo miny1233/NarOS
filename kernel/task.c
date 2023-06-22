@@ -155,9 +155,9 @@ void task_exit()
 {
     asm("cli\n");
     task_t* back = &task_list[0];// 任务0是常驻任务 从这个地方开始寻找的时间总是比从running开始快得多
-    do{
-       back = back->next;
-    } while (back->next->pid != running->pid);// 找到自己的上一个任务
+    while (back->next != running){
+       back = back->next;   // 找到自己的上一个任务
+    }
     back->next = running->next;
     running->pid = 0;   //标记任务无效
     asm("sti\n");
