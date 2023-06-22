@@ -14,7 +14,19 @@
 
 void child()
 {
-    printk("I will exit\n");
+    void* ptr[10];
+    for(int i=0;i<10;i++) {
+        ptr[i] = get_page();
+        printk("got page 0x%x\n",ptr[i]);
+    }
+    for(int i=0;i<3;i++) {
+        put_page(ptr[i]);
+        printk("freed page 0x%x\n",ptr[i]);
+    }
+    for(int i=0;i<10;i++) {
+        ptr[i] = get_page();
+        printk("got page 0x%x\n",ptr[i]);
+    }
     task_exit();
 }
 

@@ -23,7 +23,9 @@ u32 memory_base = MEMORY_BASE;
 u32 memory_size = MEMORY_SIZE;
 u32 total_page;
 
-#define IDX(addr) ((u32)addr >> 12) // 取页索引
+#define DIDX(addr) (((u32)addr >> 22) & 0x3ff) // 获取 addr 的页目录索引
+#define TIDX(addr) (((u32)addr >> 12) & 0x3ff) // 获取 addr 的页表索引
+#define IDX(addr) ((u32)(addr) >> 12) // 取页索引
 #define PAGE(idx) ((u32)idx << 12)  // 取页启始
 
 u8 page_map[IDX(MEMORY_SIZE)];
@@ -83,14 +85,14 @@ void* get_page()
 void put_page(void* addr)
 {
     assert((u32)addr >= memory_base && (u32)addr < memory_base + memory_size);
-    size_t index = IDX(addr);
-    assert(index < memory_size);
+    size_t index = IDX((u32)addr - memory_base);
+    assert(index < total_page); //不能比总页面数大
     page_map[index] = 0;
 }
 
 void page_int(u32 vector)   // 缺页中断
 {
-    panic("Segment Failed\n");
+    panic("Error: Segment Failed\n");
 }
 
 void mapping_init()

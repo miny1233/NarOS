@@ -110,6 +110,7 @@ typedef struct task_t
     u32 esp;
     struct task_t* next;    // 下一个任务
     pid_t pid;
+    //需要用内存位图来管理使用的内存
 }task_t;
 
 // 中断上下文 (栈是反向生长的)
@@ -137,9 +138,9 @@ typedef struct {
 }__attribute__((packed)) int_stack;
 
 void schedule(task_t* this,task_t* next); // 定义在schedule.s中
-
 void task_init();
-
 task_t* task_create(void *entry);
-
 void task_exit();
+inline void yield() {asm("int $0x20\n");}
+
+

@@ -132,7 +132,6 @@ task_t* task_create(void *entry) {
     void* start_mem = get_page();   //申请一页内存 4k
     void* end_mem = start_mem + PAGE_SIZE - 1;  // 页尾
     stack_init(end_mem - sizeof(int_stack),entry);
-
     for(u32 task_idx=1;task_idx < MAX_TASK_NUM;task_idx++)
     {
         if(task_list[task_idx].pid == 0)    //无任务
@@ -150,7 +149,7 @@ task_t* task_create(void *entry) {
     }
     panic("Have Some Error in Task Create"); // 这个地方理论上不会发生 如果发生那么就是未知错误
 }
-
+//还需要有释放内存的功能
 void task_exit()
 {
     asm("cli\n");
@@ -161,5 +160,5 @@ void task_exit()
     back->next = running->next;
     running->pid = 0;   //标记任务无效
     asm("sti\n");
-    asm("int $0x20");   //切换任务
+    yield();   //切换任务
 }
