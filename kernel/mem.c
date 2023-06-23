@@ -23,10 +23,10 @@ u32 memory_base = MEMORY_BASE;
 u32 memory_size = MEMORY_SIZE;
 u32 total_page;
 
-#define DIDX(addr) (((u32)addr >> 22) & 0x3ff) // 获取 addr 的页目录索引
-#define TIDX(addr) (((u32)addr >> 12) & 0x3ff) // 获取 addr 的页表索引
+#define DIDX(addr) (((u32)(addr) >> 22) & 0x3ff) // 获取 addr 的页目录索引
+#define TIDX(addr) (((u32)(addr) >> 12) & 0x3ff) // 获取 addr 的页表索引
 #define IDX(addr) ((u32)(addr) >> 12) // 取页索引
-#define PAGE(idx) ((u32)idx << 12)  // 取页启始
+#define PAGE(idx) ((u32)(idx) << 12)  // 取页启始
 
 u8 page_map[IDX(MEMORY_SIZE)];
 
@@ -65,7 +65,6 @@ void memory_init()
     printk("[mem] total page 0x%x\n",total_page);
     for(size_t index=0;index < total_page;index++)
         page_map[index] = 0;
-
     mapping_init();
 }
 
@@ -84,7 +83,7 @@ void* get_page()
 
 void put_page(void* addr)
 {
-    assert((u32)addr >= memory_base && (u32)addr < memory_base + memory_size);
+    assert((u32)addr >= memory_base && (u32)addr < memory_base + memory_size); // 内存必须在可用区域
     size_t index = IDX((u32)addr - memory_base);
     assert(index < total_page); //不能比总页面数大
     page_map[index] = 0;
