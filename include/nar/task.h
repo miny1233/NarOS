@@ -138,9 +138,13 @@ typedef struct {
 }__attribute__((packed)) int_stack;
 
 void schedule(task_t* this,task_t* next); // 定义在schedule.s中
+
 void task_init();
+
 task_t* task_create(void *entry);
+
 void task_exit();
-inline void yield() {asm("int $0x20\n");}
+
+#define yield() asm("int $0x20\n")
 
 
