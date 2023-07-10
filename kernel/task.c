@@ -14,10 +14,16 @@ size_t process_num = 0; // 累计任务总数 只增不减 也就是说当创建
 task_t task_list[MAX_TASK_NUM];  // 任务列表 所有任务在这里统一管理
 pid_t pid_total = 0;
 
+void extend(void)
+{
+   
+}
+
 // 这里面的东西与int_stack有关，修改必须注意
 void clock_int(int vector)
 {
     send_eoi(vector);
+    extend();   // 扩展功能写在这里面，就不会影响调度
     schedule(running,running->next);
     running = running->next;
 }
