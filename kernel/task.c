@@ -10,22 +10,25 @@
 #include "nar/debug.h"
 
 task_t *running;        // 当前运行的任务
-size_t process_num = 0; // 累计任务总数 只增不减 也就是说当创建过128个任务就不能创建了 之后会改
+size_t process_num = 0; // 运行任务数
 task_t task_list[MAX_TASK_NUM];  // 任务列表 所有任务在这里统一管理
 pid_t pid_total = 0;
 
-void extend(void)
+int extend(void)
 {
-   
+    if(process_num > 1 && running->pid==0)
+        return 1;// 存在其他任务时，跳过休眠
+    return 0;
 }
-
 // 这里面的东西与int_stack有关，修改必须注意
 void clock_int(int vector)
 {
     send_eoi(vector);
-    extend();   // 扩展功能写在这里面，就不会影响调度
+    to_next:
     schedule(running,running->next);
     running = running->next;
+    if(extend())    // 扩展功能写在这里面，就不会影响调度
+        goto to_next;
 }
 
 // 以下是初始化过程
@@ -148,7 +151,7 @@ task_t* task_create(void *entry) {
             task_list[task_idx].esp = (u32)end_mem - sizeof(int_stack);
             task_list[task_idx].ebp = task_list[task_idx].esp + 0x14; // 这个位置指向ebp1
             running->next = &task_list[task_idx];
-            process_num++;
+            process_num++;  //运行任务数+1
             asm("sti");
             return &task_list[task_idx];
         }
@@ -165,6 +168,7 @@ void task_exit()
     }
     back->next = running->next;
     running->pid = 0;   //标记任务无效
+    process_num--;  // 运行任务数-1
     asm("sti\n");
     yield();   //切换任务
 }

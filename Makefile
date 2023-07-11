@@ -43,6 +43,10 @@ build:
 	objcopy -O binary $(BUILD)/nar $(BUILD)/kernel.bin
 .PHONY:build
 
+asm:
+	$(GCC) -S $(INCLUDE) $(CFLAGS) $(KERNEL)/task.c -o $(BUILD)/nar.s
+.PHONY:asm
+
 clean:
 	rm -f $(BUILD)/*.bin
 
