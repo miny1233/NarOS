@@ -14,21 +14,14 @@ size_t process_num = 0; // 运行任务数
 task_t task_list[MAX_TASK_NUM];  // 任务列表 所有任务在这里统一管理
 pid_t pid_total = 0;
 
-int extend(void)
-{
-    if(process_num > 1 && running->pid==0)
-        return 1;// 存在其他任务时，跳过休眠
-    return 0;
-}
-// 这里面的东西与int_stack有关，修改必须注意
 void clock_int(int vector)
 {
     send_eoi(vector);
-    to_next:
-    schedule(running,running->next);
-    running = running->next;
-    if(extend())    // 扩展功能写在这里面，就不会影响调度
-        goto to_next;
+    task_t *back_task = running;
+    next_task:
+     running = running->next;
+    if(process_num > 1 && running->pid == 0)goto next_task;
+    schedule(back_task, running);
 }
 
 // 以下是初始化过程
@@ -117,21 +110,16 @@ void task_init()
 
 }
 // 初始化中断栈
-static void stack_init(int_stack* stack,void* entry)
+static void stack_init(int_frame* stack,void* entry)
 {
     extern u32 interrupt_handler_0x20;  //时钟中断
-    // 函数调用产生的栈
-    stack->eip2 = (u32)clock_int + 43;  //call schedule的下一条语句
-    stack->ebp1 = (u32)stack + sizeof(int_stack);
-    stack->eip1 = (u32)&interrupt_handler_0x20 + 19;  //需要使用取地址符号 外部声明是u32函数会被当作变量
-    // 中断处理函数创建的栈
-    stack->vector = 0x20;   // 中断号 0x20
-    stack->ebp = (u32)stack + sizeof(int_stack);
+    stack->ret = (u32)&interrupt_handler_0x20 + 19;  //需要使用取地址符号 外部声明是u32函数会被当作变量
+    stack->vector = 0x20;
+    stack->ebp = (u32)stack + sizeof(int_frame);
     stack->esp = stack->ebp;
-    // Intel中断栈
-    stack->eip = (u32)entry; //eip 指向程序入口，中断返回则直接运行新任务
+    stack->eip = (u32)entry;
     stack->cs = KERNEL_CODE_SELECTOR;
-    stack->eflags = 582; // 默认标记
+    stack->eflags=582;
 }
 // 创建任务 需要提供程序入口
 task_t* task_create(void *entry) {
@@ -140,7 +128,8 @@ task_t* task_create(void *entry) {
     // 为新任务设置内存
     void* start_mem = get_page();   //申请一页内存 4k
     void* end_mem = start_mem + PAGE_SIZE - 1;  // 页尾
-    stack_init(end_mem - sizeof(int_stack),entry);
+    void* stack_mem = (end_mem - 3) - sizeof(int_frame);// 内存对齐
+    stack_init(start_mem,entry);
     for(u32 task_idx=1;task_idx < MAX_TASK_NUM;task_idx++)
     {
         if(task_list[task_idx].pid == 0)    //无任务
@@ -148,8 +137,8 @@ task_t* task_create(void *entry) {
             // 设置进程信息
             task_list[task_idx].pid = ++pid_total;
             task_list[task_idx].next = running->next;
-            task_list[task_idx].esp = (u32)end_mem - sizeof(int_stack);
-            task_list[task_idx].ebp = task_list[task_idx].esp + 0x14; // 这个位置指向ebp1
+            task_list[task_idx].esp = (u32)&(((int_frame*)start_mem)->ret);
+            task_list[task_idx].ebp = (u32)start_mem + sizeof(int_frame);
             running->next = &task_list[task_idx];
             process_num++;  //运行任务数+1
             asm("sti");

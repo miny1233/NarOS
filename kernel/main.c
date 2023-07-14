@@ -27,9 +27,9 @@ void child()
         ptr[i] = get_page();
         printk("got page 0x%x\n",ptr[i]);
     }
-    static int count = 1e10;
-    while(--count);
-    printk("exit");
+    int count = 1e10;
+    while(count--);
+    printk("exit\n");
     task_exit();
 }
 

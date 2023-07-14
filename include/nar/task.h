@@ -113,16 +113,9 @@ typedef struct task_t
     //需要用内存位图来管理使用的内存
 }task_t;
 
-// 中断上下文 (栈是反向生长的)
-// 除了要初始化 ip bp sp 和 特殊寄存器外 都不需要初始化 空出来只为维持栈平衡
+// 中断帧
 typedef struct {
-    u32 eip2;
-    u32 stack_next;
-    u32 stack_now;
-    u32 u1;     // u1 u2 是两个未知的参数 应该是栈变量
-    u32 u2;
-    u32 ebp1;   // ebp1 eip1 都是 call进 clock_int产生的
-    u32 eip1;   // eip都是固定的，ebp需要计算一下
+    u32 ret;
     u32 vector;
     u32 edi;
     u32 esi;
@@ -135,7 +128,7 @@ typedef struct {
     u32 eip;
     u32 cs;
     u32 eflags;
-}__attribute__((packed)) int_stack;
+}__attribute__((packed)) int_frame;
 
 void schedule(task_t* this,task_t* next); // 定义在schedule.s中
 
