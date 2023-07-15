@@ -11,11 +11,12 @@
 
 task_t *running;        // 当前运行的任务
 size_t process_num = 0; // 运行任务数
-task_t task_list[MAX_TASK_NUM];  // 任务列表 所有任务在这里统一管理
+task_t *task_list;  // 任务列表 所有任务在这里统一管理
 pid_t pid_total = 0;
 
 void clock_int(int vector)
 {
+    assert(vector == 0x20);
     send_eoi(vector);
     task_t *back_task = running;
     next_task:
@@ -91,6 +92,7 @@ void task_init()
     asm volatile(
             "ltr %%ax\n" ::"a"(KERNEL_TSS_SELECTOR));
 
+    task_list = get_page(); //为进程表分配内存
     // 手动加载进程 0
     task_list[0].pid = 0;
     task_list[0].next = &task_list[0];  // 循环链表 自己指向自己
