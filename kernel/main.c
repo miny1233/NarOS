@@ -1,35 +1,26 @@
 #include <type.h>
 #include <device/tty.h>
 #include <device/keyboard.h>
+#include <device/disk.h>
 #include <nar/printk.h>
-#include <nar/debug.h>
 #include <nar/interrupt.h>
 #include <nar/task.h>
 #include <nar/pipe.h>
 #include <nar/panic.h>
 #include <nar/mem.h>
-#include <math.h>
-#include <stdio.h>
 #include <memory.h>
 
 void child()
 {
-    void* ptr[10];
-    for(int i=0;i<10;i++) {
-        ptr[i] = get_page();
-        printk("got page 0x%x\n",ptr[i]);
+    void* buffer = get_page();
+    for(int sector=0;sector<50;sector++) {
+        disk_read(sector, buffer, 10);
+        for (int i = 0; i < 5120; i++) {
+            int j = 1e4;
+            while (--j);
+            printk("%c", *((char *)buffer + i));
+        }
     }
-    for(int i=0;i<3;i++) {
-        put_page(ptr[i]);
-        printk("freed page 0x%x\n",ptr[i]);
-    }
-    for(int i=0;i<10;i++) {
-        ptr[i] = get_page();
-        printk("got page 0x%x\n",ptr[i]);
-    }
-    int count = 1e10;
-    while(count--);
-    printk("exit\n");
     task_exit();
 }
 
