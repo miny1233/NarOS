@@ -10,9 +10,10 @@ typedef struct{
     size_t super_block; //超级块占用的扇区(连续)
     size_t fs_begin;    //文件系统的开始扇区
     size_t magic;       //文件系统魔数
+    size_t root;        //根块
 }fs_info;
 
-struct
+struct super_block
 {
     fs_info info;
     u8 bitmap[BLOCK_SIZE - sizeof(fs_info)];
@@ -58,6 +59,7 @@ void format(u32 sector_begin,u32 sector_end)
     super_block.info.super_block = first_super_bitmap_size + extern_need_block;
     super_block.info.fs_begin = sector_begin;
     super_block.info.magic = FS_MAGIC;
+    super_block.info.root = 0;
     memset(super_block.bitmap,0,sizeof(super_block.bitmap));
 
     void* empty = get_page();
@@ -68,10 +70,25 @@ void format(u32 sector_begin,u32 sector_end)
     disk_write(sector_begin,&super_block,1);// 写入超级块
 }
 
+struct super_block* superBlock = NULL;//以后操作根超级块用这个指针
+u8* bitmap = NULL;
+
 int load_super_block(u32 sector)
 {
     disk_read(sector,&super_block,1);
     if(super_block.info.magic != FS_MAGIC)return -1;
+    //载入超级块的位图
+    //位图需要的内存页
+    size_t bitmap_mem_page_size = (super_block.info.super_block / 8)
+            + (super_block.info.super_block % 8 != 0);
+    superBlock = get_page();
+    for(int i=1;i < bitmap_mem_page_size;i++)
+        get_page();
+
+    //通过计算偏移得到
+    bitmap = ((u8*)&super_block.bitmap - (u8*)&super_block) + (u8*)superBlock;
+    //读取完整的根超级块
+    disk_read(sector,superBlock,super_block.info.super_block);
     return 0;
 }
 
@@ -87,5 +104,5 @@ void fs_init()
 
 void mkdir(const char* path)
 {
-    
+
 }
