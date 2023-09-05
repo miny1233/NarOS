@@ -6,5 +6,5 @@
 #define NAROS_DISK_H
 
 void disk_read(u32 sector,void* buf,u8 count);
-
+void disk_write(u32 sector,void* buf,u8 count);
 #endif //NAROS_DISK_H

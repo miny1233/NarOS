@@ -12,14 +12,14 @@
 
 void child()
 {
-    void* buffer = get_page();
-    for(int sector=0;sector<50;sector++) {
-        disk_read(sector, buffer, 10);
-        for (int i = 0; i < 5120; i++) {
-            int j = 1e4;
-            while (--j);
-            printk("%c", *((char *)buffer + i));
-        }
+    u8* buffer = get_page();
+    u8 hel[512] = {"hello world"};
+    disk_write(0x40,hel,1);
+    disk_read(0x40,buffer,1);
+    for(int i = 0;i < 512;i++)
+    {
+        //printk("%d :",i);
+        printk("%c",buffer[i]);
     }
     task_exit();
 }
@@ -35,8 +35,10 @@ int init()
     interrupt_hardler_register(0x21,keyboard_handler);
     set_interrupt_mask(1,1); //启动键盘中断
 
-    task_create(child);
+    child();
+
+    //task_create(child);
+    //printk("kernel message:%s : %d","nothing to do",20);
 
     return 0; //初始化完毕，初始化程序变idle程序
 }
-
