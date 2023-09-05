@@ -32,13 +32,32 @@
 #define ATA_CMD_IDENTIFY_PACKET   0xA1
 #define ATA_CMD_IDENTIFY          0xEC
 
-int ata_state_handle()
+#define ATA_REG_DATA       0x00
+#define ATA_REG_ERROR      0x01
+#define ATA_REG_FEATURES   0x01
+#define ATA_REG_SECCOUNT0  0x02
+#define ATA_REG_LBA0       0x03
+#define ATA_REG_LBA1       0x04
+#define ATA_REG_LBA2       0x05
+#define ATA_REG_HDDEVSEL   0x06
+#define ATA_REG_COMMAND    0x07
+#define ATA_REG_STATUS     0x07
+#define ATA_REG_SECCOUNT1  0x08
+#define ATA_REG_LBA3       0x09
+#define ATA_REG_LBA4       0x0A
+#define ATA_REG_LBA5       0x0B
+#define ATA_REG_CONTROL    0x0C
+#define ATA_REG_ALTSTATUS  0x0C
+#define ATA_REG_DEVADDRESS 0x0D
+
+u16 BR0 = 0x1f0;
+
+int get_ata_state()
 {
-    u16 addr = 0x01f7;
     u8 status;
     while(true) {
         //yield();    // 硬盘速度是比较慢的 可以先放弃cpu时间
-        status = inb(addr);
+        status = inb(BR0 + ATA_REG_STATUS);
         if (status & ATA_SR_BSY) {
             continue;
         }
@@ -67,27 +86,24 @@ int ata_state_handle()
 
 }
 
-void disk_rw(u32 sector,void* buf,u8 count,int mode)
+void ata_rw(u32 sector,void* buf,u8 count,int mode)
 {
     u8 status;
 
-    outb(0x01f1,0x00);
+    outb(BR0 + ATA_REG_FEATURES,0x00);
     //这里踩了一个坑，发送NULL是让控制器准备，只有准备完毕才能继续
-    if(ata_state_handle())return;
+    if(get_ata_state())return;
 
-    u16 addr = 0x01f2;
-    outb(addr++,count); //读取扇区数
+    outb(BR0 + ATA_REG_SECCOUNT0,count); //读取扇区数
 
-    for(int i = 0;i < 3;i++)    //  循环拆分来取字节
-    {
-        outb(addr++,sector & 0xff);
-        sector>>=8;
-    }
-    assert(addr == 0x01f6);
-    outb(addr++,0xe0 | (sector & 0xf));
-    outb(addr,mode == DISKREAD ? ATA_CMD_READ_PIO : ATA_CMD_WRITE_PIO); //读写命令
+    outb(BR0 + ATA_REG_LBA0,sector & 0xff);
+    outb(BR0 + ATA_REG_LBA1,sector>>8 & 0xff);
+    outb(BR0 + ATA_REG_LBA2,sector>>16 & 0xff);
 
-    if(ata_state_handle())return;
+    outb(BR0 + ATA_REG_HDDEVSEL,0xe0 | (sector & 0xf));
+    outb(BR0 + ATA_REG_COMMAND,mode == DISKREAD ? ATA_CMD_READ_PIO : ATA_CMD_WRITE_PIO); //读写命令
+
+    if(get_ata_state())return;
 
     int read_count = (count * 512) / 2;//每个扇区是512字节 一次读2字节
 
@@ -95,7 +111,7 @@ void disk_rw(u32 sector,void* buf,u8 count,int mode)
     while(read_count--)
     {
         if(mode == DISKREAD)
-            *buffer++ = inw(0x01f0);
+            *buffer++ = inw(BR0 + ATA_REG_DATA);
         else if(mode == DISKWRITE)
             outw(0x01f0,*buffer++);
     }
@@ -103,10 +119,10 @@ void disk_rw(u32 sector,void* buf,u8 count,int mode)
 
 void disk_read(u32 sector,void* buf,u8 count)
 {
-    disk_rw(sector,buf,count,DISKREAD);
+    ata_rw(sector,buf,count,DISKREAD);
 }
 
 void disk_write(u32 sector,void* buf,u8 count)
 {
-    disk_rw(sector,buf,count,DISKWRITE);
+    ata_rw(sector,buf,count,DISKWRITE);
 }
