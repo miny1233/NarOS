@@ -9,6 +9,7 @@
 #include <nar/panic.h>
 #include <nar/mem.h>
 #include <memory.h>
+#include <nar/fs.h>
 
 void child()
 {
@@ -30,12 +31,13 @@ int init()
     interrupt_init();   // 中断处理
     memory_init();      // 内存管理
     task_init();        // 任务调度
+    fs_init();          // 文件系统初始化
     pipe_init();
     // 外围设备
     interrupt_hardler_register(0x21,keyboard_handler);
     set_interrupt_mask(1,1); //启动键盘中断
 
-    task_create(child);
+    //task_create(child);
     //printk("kernel message:%s : %d","nothing to do",20);
 
     return 0; //初始化完毕，初始化程序变idle程序

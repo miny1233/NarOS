@@ -32,10 +32,10 @@
 #define ATA_CMD_IDENTIFY_PACKET   0xA1
 #define ATA_CMD_IDENTIFY          0xEC
 
-#define ATA_REG_DATA       0x00
-#define ATA_REG_ERROR      0x01
-#define ATA_REG_FEATURES   0x01
-#define ATA_REG_SECCOUNT0  0x02
+#define ATA_REG_DATA       0x00 // Read-Write
+#define ATA_REG_ERROR      0x01 // Read Only
+#define ATA_REG_FEATURES   0x01 // Write Only
+#define ATA_REG_SECCOUNT0  0x02 // Read-Write
 #define ATA_REG_LBA0       0x03
 #define ATA_REG_LBA1       0x04
 #define ATA_REG_LBA2       0x05
@@ -50,7 +50,7 @@
 #define ATA_REG_ALTSTATUS  0x0C
 #define ATA_REG_DEVADDRESS 0x0D
 
-u16 BR0 = 0x1f0;
+u16 BR0 = 0x1f0;    //这个是看设备的，一般的计算机ATA总线入口都在这
 
 int get_ata_state()
 {
@@ -90,8 +90,8 @@ void ata_rw(u32 sector,void* buf,u8 count,int mode)
 {
     u8 status;
 
+    // Select the Drive
     outb(BR0 + ATA_REG_FEATURES,0x00);
-    //这里踩了一个坑，发送NULL是让控制器准备，只有准备完毕才能继续
     if(get_ata_state())return;
 
     outb(BR0 + ATA_REG_SECCOUNT0,count); //读取扇区数
