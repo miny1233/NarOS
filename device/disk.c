@@ -88,8 +88,6 @@ int get_ata_state()
 
 void ata_rw(u32 sector,void* buf,u8 count,int mode)
 {
-    u8 status;
-
     // Select the Drive
     outb(BR0 + ATA_REG_FEATURES,0x00);
     if(get_ata_state())return;

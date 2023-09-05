@@ -3,6 +3,7 @@
 //
 
 #include <nar/fs.h>
+#define FS_MAGIC 1233
 
 typedef struct{
     size_t sector_size; //磁盘的总可用扇区
@@ -56,7 +57,7 @@ void format(u32 sector_begin,u32 sector_end)
     super_block.info.sector_size = sector_size;
     super_block.info.super_block = first_super_bitmap_size + extern_need_block;
     super_block.info.fs_begin = sector_begin;
-    super_block.info.magic = 1233;
+    super_block.info.magic = FS_MAGIC;
     memset(super_block.bitmap,0,sizeof(super_block.bitmap));
 
     void* empty = get_page();
@@ -70,19 +71,21 @@ void format(u32 sector_begin,u32 sector_end)
 int load_super_block(u32 sector)
 {
     disk_read(sector,&super_block,1);
-    if(super_block.info.magic != 1233)return -1;
+    if(super_block.info.magic != FS_MAGIC)return -1;
     return 0;
 }
 
 //初始化文件系统
 void fs_init()
 {
+    // 单文件系统 默认0x100扇区启动
     size_t format_size = 10;//10MB
-    if(load_super_block(0x100))
-        format(0x100,format_size * 1024 * 2);
+    //format(0x100,format_size * 1024 * 2);
+    if(load_super_block(0x100))panic("[fs] Load file system fault");
+    printk("[fs] load file system successful");
 }
 
 void mkdir(const char* path)
 {
-
+    
 }

@@ -11,6 +11,7 @@
 #include <device/disk.h>
 #include <memory.h>
 #include <nar/mem.h>
+#include <nar/panic.h>
 
 #define BLOCK_SIZE 512 //块大小
 
