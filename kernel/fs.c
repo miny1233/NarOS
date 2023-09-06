@@ -123,7 +123,7 @@ void mkroot()
             .attribute.next_block = 0,
             .attribute.chunk_type = CHUNK_T_INFO,
             .attribute.type = CHUNK_ATB_DIR,
-            .attribute.file_name = "root"
+            .attribute.file_name = ""
     };
 
     superBlock->info.root = sec;
@@ -147,18 +147,18 @@ void chunk_close(chunk_block* chunk)
 void fs_init()
 {
     // 单文件系统 默认0x100扇区启动
-    size_t format_size = 10;//10MB
-    format(0x100,format_size * 1024 * 2);
-    if (load_super_block(0x100))
+    //size_t format_size = 10;//10MB
+    //format(0x200,format_size * 1024 * 2);
+    if (load_super_block(0x200))
         panic("[fs] Load file system fault\n");
-    //printk("[fs] load file system successful\n");
+    printk("[fs] load file system successful\n");
     //printk("start b:%d empty b:%d\n",superBlock->info.fs_begin,find_empty_block());
     if (superBlock->info.root == 0)
     {
         printk("[fs]cannot find root,make it now.\n");
         mkroot();
     }
-    load_super_block(0x100);
+    load_super_block(0x200);
     printk("[fs] find root name is %s", chunk_open(superBlock->info.root)->attribute.file_name);
 
 }
