@@ -3,6 +3,8 @@
 //
 
 #include <nar/fs.h>
+#include <bitmap.h>
+
 #define FS_MAGIC 1233
 
 typedef struct{
@@ -27,6 +29,7 @@ struct super_block
 typedef struct {
     int type;       // 文件类型 (文件或文件夹)
     int chunk_type;  //块类型 逻辑块纪律文件信息 数据块记录逻辑块记录不下的数据
+    size_t sec;     //自己所在的扇区
     size_t next_block;  // 下一个块所在扇区
     char file_name[32]; //文件名
 }__attribute__((packed)) file_attribute;    // 文件属性
@@ -43,6 +46,7 @@ typedef struct
     chunk_data data;
 }__attribute__((packed)) chunk_block; // 逻辑块
 
+
 //  格式化文件系统
 void format(u32 sector_begin,u32 sector_end)
 {
@@ -56,11 +60,14 @@ void format(u32 sector_begin,u32 sector_end)
     printk("[NAFS]need extern block %d",extern_need_block);
     // 制作超级块
     super_block.info.sector_size = sector_size;
-    super_block.info.super_block = first_super_bitmap_size + extern_need_block;
+    super_block.info.super_block = 1 + extern_need_block;
     super_block.info.fs_begin = sector_begin;
     super_block.info.magic = FS_MAGIC;
     super_block.info.root = 0;
     memset(super_block.bitmap,0,sizeof(super_block.bitmap));
+
+    for (int i = 0;i < super_block.info.super_block;i++)
+        bitmap_set(super_block.bitmap,i,1);
 
     void* empty = get_page();
     memset(empty,0,512);
@@ -71,7 +78,6 @@ void format(u32 sector_begin,u32 sector_end)
 }
 
 struct super_block* superBlock = NULL;//以后操作根超级块用这个指针
-u8* bitmap = NULL;
 
 int load_super_block(u32 sector)
 {
@@ -85,11 +91,53 @@ int load_super_block(u32 sector)
     for(int i=1;i < bitmap_mem_page_size;i++)
         get_page();
 
-    //通过计算偏移得到
-    bitmap = ((u8*)&super_block.bitmap - (u8*)&super_block) + (u8*)superBlock;
     //读取完整的根超级块
     disk_read(sector,superBlock,super_block.info.super_block);
     return 0;
+}
+
+size_t find_empty_block()
+{
+    for (int sec = 0;sec < superBlock->info.sector_size; sec++)
+    {
+        if(bitmap_get(superBlock->bitmap,sec) == 0)
+            return  superBlock->info.fs_begin + sec;
+    }
+    return 0;
+}
+
+void set_super_bitmap(size_t sec,int data)
+{
+    size_t bitmap_bit = sec - superBlock->info.fs_begin;
+    bitmap_set(superBlock->bitmap,bitmap_bit,data);
+    disk_write(superBlock->info.fs_begin,superBlock,superBlock->info.super_block);
+}
+
+void mkroot()
+{
+    size_t sec = find_empty_block();
+    chunk_block chunkBlock = {
+            .attribute.type = CHUNK_ATB_DIR,
+            .attribute.chunk_type = CHUNK_T_INFO,
+            .attribute.next_block = 0,
+            .attribute.sec = sec,
+            .attribute.file_name = ""
+    };
+    superBlock->info.root = sec;
+    set_super_bitmap(sec,1);
+    disk_read(sec,&chunkBlock,1);
+}
+
+chunk_block* chunk_open(size_t sec)
+{
+    chunk_block* cp = get_page();
+    disk_read(sec,cp,1);
+    return cp;
+}
+void chunk_close(chunk_block* chunk)
+{
+    disk_write(chunk->attribute.sec,chunk,1);
+    put_page(chunk);
 }
 
 //初始化文件系统
@@ -98,8 +146,16 @@ void fs_init()
     // 单文件系统 默认0x100扇区启动
     size_t format_size = 10;//10MB
     //format(0x100,format_size * 1024 * 2);
-    if(load_super_block(0x100))panic("[fs] Load file system fault");
-    printk("[fs] load file system successful");
+    if (load_super_block(0x100))panic("[fs] Load file system fault\n");
+    //printk("[fs] load file system successful\n");
+    //printk("start b:%d empty b:%d\n",superBlock->info.fs_begin,find_empty_block());
+    if (superBlock->info.root == 0)
+    {
+        printk("[fs]cannot find root,make it now.\n");
+        mkroot();
+    }
+    //printk("[fs] find root name is %s",);
+
 }
 
 void mkdir(const char* path)

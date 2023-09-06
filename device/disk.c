@@ -108,10 +108,11 @@ void ata_rw(u32 sector,void* buf,u8 count,int mode)
     u16* buffer = buf;
     while(read_count--)
     {
+        get_ata_state();    //读写过程中也可能出现繁忙
         if(mode == DISKREAD)
             *buffer++ = inw(BR0 + ATA_REG_DATA);
         else if(mode == DISKWRITE)
-            outw(0x01f0,*buffer++);
+            outw(BR0 + ATA_REG_DATA,*buffer++);
     }
 }
 
