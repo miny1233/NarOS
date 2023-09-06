@@ -95,10 +95,10 @@ void ata_rw(u32 sector,void* buf,u8 count,int mode)
     outb(BR0 + ATA_REG_SECCOUNT0,count); //读取扇区数
 
     outb(BR0 + ATA_REG_LBA0,sector & 0xff);
-    outb(BR0 + ATA_REG_LBA1,sector>>8 & 0xff);
-    outb(BR0 + ATA_REG_LBA2,sector>>16 & 0xff);
+    outb(BR0 + ATA_REG_LBA1,(sector>>8) & 0xff);
+    outb(BR0 + ATA_REG_LBA2,(sector>>16) & 0xff);
 
-    outb(BR0 + ATA_REG_HDDEVSEL,0xe0 | (sector & 0xf));
+    outb(BR0 + ATA_REG_HDDEVSEL,0xe0 | ((sector>>24) & 0xf));
     outb(BR0 + ATA_REG_COMMAND,mode == DISKREAD ? ATA_CMD_READ_PIO : ATA_CMD_WRITE_PIO); //读写命令
 
     if(get_ata_state())return;

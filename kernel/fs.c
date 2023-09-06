@@ -31,6 +31,7 @@ typedef struct {
     int chunk_type;  //块类型 逻辑块纪律文件信息 数据块记录逻辑块记录不下的数据
     size_t sec;     //自己所在的扇区
     size_t next_block;  // 下一个块所在扇区
+    size_t file_size;
     char file_name[32]; //文件名
 }__attribute__((packed)) file_attribute;    // 文件属性
 
@@ -57,7 +58,7 @@ void format(u32 sector_begin,u32 sector_end)
     for (extern_need_block = 0;
         extern_need_block * super_bitmap_size < sector_size - first_super_bitmap_size;
         extern_need_block++);
-    printk("[NAFS]need extern block %d",extern_need_block);
+    printk("[NAFS]need extern block %d\n",extern_need_block);
     // 制作超级块
     super_block.info.sector_size = sector_size;
     super_block.info.super_block = 1 + extern_need_block;
@@ -117,15 +118,17 @@ void mkroot()
 {
     size_t sec = find_empty_block();
     chunk_block chunkBlock = {
-            .attribute.type = CHUNK_ATB_DIR,
-            .attribute.chunk_type = CHUNK_T_INFO,
-            .attribute.next_block = 0,
+            .attribute.file_size = 0,
             .attribute.sec = sec,
-            .attribute.file_name = ""
+            .attribute.next_block = 0,
+            .attribute.chunk_type = CHUNK_T_INFO,
+            .attribute.type = CHUNK_ATB_DIR,
+            .attribute.file_name = "root"
     };
+
     superBlock->info.root = sec;
     set_super_bitmap(sec,1);
-    disk_read(sec,&chunkBlock,1);
+    disk_write(sec,&chunkBlock,1);
 }
 
 chunk_block* chunk_open(size_t sec)
@@ -145,8 +148,9 @@ void fs_init()
 {
     // 单文件系统 默认0x100扇区启动
     size_t format_size = 10;//10MB
-    //format(0x100,format_size * 1024 * 2);
-    if (load_super_block(0x100))panic("[fs] Load file system fault\n");
+    format(0x100,format_size * 1024 * 2);
+    if (load_super_block(0x100))
+        panic("[fs] Load file system fault\n");
     //printk("[fs] load file system successful\n");
     //printk("start b:%d empty b:%d\n",superBlock->info.fs_begin,find_empty_block());
     if (superBlock->info.root == 0)
@@ -154,7 +158,8 @@ void fs_init()
         printk("[fs]cannot find root,make it now.\n");
         mkroot();
     }
-    //printk("[fs] find root name is %s",);
+    load_super_block(0x100);
+    printk("[fs] find root name is %s", chunk_open(superBlock->info.root)->attribute.file_name);
 
 }
 
