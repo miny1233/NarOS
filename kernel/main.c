@@ -10,6 +10,8 @@
 #include <nar/mem.h>
 #include <memory.h>
 #include <nar/fs.h>
+#include <nar/multiboot.h>
+#include <nar/globa.h>
 
 void child()
 {
@@ -25,18 +27,24 @@ void child()
     task_exit();
 }
 
-int init()
+multiboot_info_t* device_info;
+int init(unsigned long magic, multiboot_info_t* _info)
 {
-    tty_init();         // 最早初始化
+    tty_init();         // 最早初始化 (printk依赖)
+
+    if (magic != 0x2BADB002)panic("Non-GRUB Boot Kernel\n");
+    printk("GRUB Booted Kernel\n");
+    device_info = _info;
+
+    globa_init();       // 切换内核描述符表 设置TSS
     interrupt_init();   // 中断处理
     memory_init();      // 内存管理
     task_init();        // 任务调度
-    fs_init();          // 文件系统初始化
-    pipe_init();
+    //fs_init();          // 文件系统初始化
+    //pipe_init();
     // 外围设备
     interrupt_hardler_register(0x21,keyboard_handler);
     set_interrupt_mask(1,1); //启动键盘中断
-
     //task_create(child);
     //printk("kernel message:%s : %d","nothing to do",20);
 

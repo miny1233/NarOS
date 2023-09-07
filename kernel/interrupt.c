@@ -31,7 +31,7 @@ typedef struct pointer_t
 
 
 gate_t idt[IDT_SIZE];
-pointer_t idt_48;
+volatile pointer_t idt_48;
 
 static void pic_init()
 {
@@ -59,12 +59,13 @@ void interrupt_init()
     printk("[interrupt]Init PIC\n");
     pic_init();
     printk("[interrupt]Set IDT NOW\n");
+
     gate_t idt_s;
     idt_s.selector = 0x8;   //系统段
     idt_s.reserved = 0;     //保留0
     idt_s.type = 0b1110;    //中断门
     idt_s.segment = 0;      //系统段
-    idt_s.DPL = 3;          //内核态
+    idt_s.DPL = 0;          //内核态
     idt_s.present = 1;      //有效
     for(size_t interrupt_num=0;interrupt_num<=0x2f;interrupt_num++)
     {
@@ -72,7 +73,7 @@ void interrupt_init()
         idt_s.offset1 = (u32)handler_entry_table[interrupt_num]>>16;
         idt[interrupt_num] = idt_s;
     }
-    for(size_t interrupt_num=0x30;interrupt_num<=IDT_SIZE;interrupt_num++)
+    for(size_t interrupt_num=0x30;interrupt_num<IDT_SIZE;interrupt_num++)
     {
         idt_s.offset0 = (u32)default_int_hardler;
         idt_s.offset1 = (u32)default_int_hardler>>16;
@@ -83,8 +84,7 @@ void interrupt_init()
     idt_48.base = (u32)idt;
     idt_48.limit = sizeof(idt)-1; 
     asm volatile("lidt idt_48");
-    asm volatile("sti");    //打开中断
-    return;
+    asm volatile("sti");
 }
 
 u32 interrupt_hardler_list[IDT_SIZE];

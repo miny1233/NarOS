@@ -3,6 +3,8 @@
 #include <nar/panic.h>
 #include <nar/interrupt.h>
 #include <memory.h>
+#include <nar/multiboot.h>
+#include <math.h>
 
 typedef struct page_entry_t
 {
@@ -19,7 +21,7 @@ typedef struct page_entry_t
     u32 index : 20;  // 页索引
 }__attribute__((packed)) page_entry_t;
 
-u32 memory_base = MEMORY_BASE;
+u32 memory_base = 0x200000;  //由于GRUB把内核载入到了1M处，为了保证安全至少从2M开始有效
 u32 memory_size = MEMORY_SIZE;
 u32 total_page;
 
@@ -28,7 +30,7 @@ u32 total_page;
 #define IDX(addr) ((u32)(addr) >> 12) // 取页索引
 #define PAGE(idx) ((u32)(idx) << 12)  // 取页启始
 
-u8 page_map[IDX(MEMORY_SIZE)];
+u8* page_map;
 
 page_entry_t* page_table;  // 页目录
 
@@ -61,10 +63,47 @@ void mapping_init(); // 映射页
 void memory_init()
 {
     printk("[mem] memory init\n");
+    //内存状态的检测
+    printk("[mem] total mem size is %d KB\n",device_info->mem_upper);
+    if (device_info->flags & 6)
+    {
+        multiboot_memory_map_t *mmap;
+
+        printk ("mmap_addr = 0x%x, mmap_length = 0x%x\n",
+                (unsigned) device_info->mmap_addr, (unsigned) device_info->mmap_length);
+        /*
+         * 这段代码其实我也没搞懂，官方文档没有详细介绍mmap的内存结构
+         * 不过在下方的事例程序中提供了这样一段代码
+         * https://www.gnu.org/software/grub/manual/multiboot/multiboot.html#kernel_002ec
+         */
+        for (mmap = (multiboot_memory_map_t *) device_info->mmap_addr;
+             (unsigned long) mmap < device_info->mmap_addr + device_info->mmap_length;
+             mmap = (multiboot_memory_map_t *) ((unsigned long) mmap
+                                                + mmap->size + sizeof (mmap->size))) {
+            printk(" size = 0x%x, base_addr = 0x%x%08x,"
+                   " length = 0x%x%08x, type = 0x%x\n",
+                   (unsigned) mmap->size,
+                   (unsigned) (mmap->addr >> 32),
+                   (unsigned) (mmap->addr & 0xffffffff),
+                   (unsigned) (mmap->len >> 32),
+                   (unsigned) (mmap->len & 0xffffffff),
+                   (unsigned) mmap->type);
+            if (memory_size < (mmap->len & 0xffffffff)) {
+                memory_base = (mmap->addr & 0xffffffff) > memory_base ?
+                              (mmap->addr & 0xffffffff) : memory_base;
+                memory_size = (mmap->len & 0xffffffff);
+            }
+        }
+    }
+    printk("[mem]mem base 0x%X size: 0x%X\n",memory_base,memory_size);
     total_page = IDX(memory_size);
     printk("[mem] total page 0x%x\n",total_page);
+    page_map = (void*)memory_base;  //开头的内存分配给内存表
+    memory_base += ((total_page / PAGE_SIZE) + 1) * 4096;//表要能记录total_page个内存
+    memory_size -= ((total_page / PAGE_SIZE) + 1) * 4096;//那么剩余的内存就减少了
+    printk("[mem] can use mem base 0x%X size: 0x%X\n",memory_base,memory_size);
     for(size_t index=0;index < total_page;index++)
-        page_map[index] = 0;
+        page_map[index] = 0; //设置为全0
     mapping_init();
 }
 

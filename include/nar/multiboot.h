@@ -229,6 +229,9 @@ struct multiboot_info
 };
 typedef struct multiboot_info multiboot_info_t;
 
+//主函数中包含指向的指针
+extern multiboot_info_t* device_info;
+
 struct multiboot_color
 {
     multiboot_uint8_t red;
