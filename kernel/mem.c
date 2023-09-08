@@ -22,7 +22,7 @@ typedef struct page_entry_t
 }__attribute__((packed)) page_entry_t;
 
 u32 memory_base = 0x200000;  //由于GRUB把内核载入到了1M处，为了保证安全至少从2M开始有效
-u32 memory_size = MEMORY_SIZE;
+u32 memory_size = 0;
 u32 total_page;
 
 #define DIDX(addr) (((u32)(addr) >> 22) & 0x3ff) // 获取 addr 的页目录索引
@@ -65,7 +65,7 @@ void memory_init()
     printk("[mem] memory init\n");
     //内存状态的检测
     printk("[mem] total mem size is %d KB\n",device_info->mem_upper);
-    if (device_info->flags & 6)
+    if (device_info->flags & (1 << 6))
     {
         multiboot_memory_map_t *mmap;
 
@@ -88,7 +88,7 @@ void memory_init()
                    (unsigned) (mmap->len >> 32),
                    (unsigned) (mmap->len & 0xffffffff),
                    (unsigned) mmap->type);
-            if (memory_size < (mmap->len & 0xffffffff)) {
+            if (memory_size < (mmap->len & 0xffffffff) && mmap->type == 0x1) {
                 memory_base = (mmap->addr & 0xffffffff) > memory_base ?
                               (mmap->addr & 0xffffffff) : memory_base;
                 memory_size = (mmap->len & 0xffffffff);
@@ -144,7 +144,7 @@ void mapping_init()
     printk("[mem] page_table at 0x%x\n",page_table);
 
     entry_init(&page_table[0],IDX((u32)pte));   // 页目录0->内核页表
-    for(u32 index=0;index < PAGE_SIZE/4; index++)
+    for(u32 index=0;index < PAGE_SIZE/4; index++)// 映射一张页表 总计4M
     {
         entry_init(&pte[index],index);   // 映射物理内存在原来的位置
     }

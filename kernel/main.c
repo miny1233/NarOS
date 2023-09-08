@@ -45,8 +45,12 @@ int init(unsigned long magic, multiboot_info_t* _info)
     // 外围设备
     interrupt_hardler_register(0x21,keyboard_handler);
     set_interrupt_mask(1,1); //启动键盘中断
+    
     //task_create(child);
-    //printk("kernel message:%s : %d","nothing to do",20);
 
+    if (device_info->flags & 1<<1)
+        printk ("boot_device = 0x%x\n", (unsigned) device_info->boot_device);
+
+    
     return 0; //初始化完毕，初始化程序变idle程序
 }

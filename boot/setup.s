@@ -156,7 +156,7 @@ dw 0x0000
 
 ;临时GDT表
 gdt:
-dd 0,0
+dd 0,0    ;NULL
 ;代码段
 dw 0x07FF ;段限长
 dw 0x0000 ;基地址
