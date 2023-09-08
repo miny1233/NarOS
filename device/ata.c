@@ -1,5 +1,5 @@
 #include <type.h>
-#include <device/disk.h>
+#include <device/ata.h>
 #include <device/io.h>
 #include <nar/task.h>
 #include <nar/panic.h>
@@ -116,12 +116,14 @@ void ata_rw(u32 sector,void* buf,u8 count,int mode)
     }
 }
 
-void disk_read(u32 sector,void* buf,u8 count)
+//暂时只能读取主盘
+
+void ata_disk_read(u32 sector,void* buf,u8 count)
 {
     ata_rw(sector,buf,count,DISKREAD);
 }
 
-void disk_write(u32 sector,void* buf,u8 count)
+void ata_disk_write(u32 sector,const void* buf,u8 count)
 {
     ata_rw(sector,buf,count,DISKWRITE);
 }

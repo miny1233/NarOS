@@ -2,6 +2,10 @@
 // Created by 谢子南 on 2023/6/23.
 //
 
+//NAFS 废弃
+
+#ifdef NAFS
+
 #include <nar/fs.h>
 #include <bitmap.h>
 
@@ -167,3 +171,5 @@ void mkdir(const char* path)
 {
 
 }
+
+#endif

@@ -29,7 +29,9 @@ SOURCE:=$(wildcard \
 		$(DEVICE)/*.s \
 		$(KERNEL)/*.c \
 		$(DEVICE)/*.c \
-		$(LIB)/*.c ) #这里有编译顺序，head.s必须第一个编译
+		$(LIB)/*.c \
+		$(KERNEL)/fs/*.c \
+		) #这里有编译顺序，head.s必须第一个编译
 
 
 all:

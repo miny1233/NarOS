@@ -8,7 +8,7 @@
 #include "type.h"
 #include <device/tty.h>
 #include <nar/printk.h>
-#include <device/disk.h>
+#include <device/ata.h>
 #include <memory.h>
 #include <nar/mem.h>
 #include <nar/panic.h>

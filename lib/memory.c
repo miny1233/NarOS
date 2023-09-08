@@ -22,3 +22,15 @@ void memset(void* des,char context,size_t len)
         *(char*)des++ = context;
     }
 }
+
+int memcmp(const void *str1, const void *str2, size_t n)
+{
+    const char* s1 = str1,*s2 = str2;
+    while(n--)
+    {
+        int ret = *s1++ - *s2++;
+        if(ret == 0)continue;
+        else return ret;
+    }
+    return 0;
+}
