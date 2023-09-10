@@ -22,10 +22,10 @@ multiboot_info_t* device_info;
 int init(unsigned long magic, multiboot_info_t* _info)
 {
     tty_init();         // 最早初始化 (printk依赖)
-
-    if (magic != 0x2BADB002)panic("Non-GRUB Boot Kernel\n");
-    printk("GRUB Booted Kernel\n");
     device_info = _info;
+    if (magic != MULTIBOOT_BOOTLOADER_MAGIC)panic("Non-GRUB Boot Kernel\n");
+    if (device_info->flags & (1 << 9))
+        printk("boot by %s\n",device_info->boot_loader_name);
 
     globa_init();       // 切换内核描述符表 设置TSS
     interrupt_init();   // 中断处理

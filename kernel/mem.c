@@ -62,14 +62,14 @@ void mapping_init(); // 映射页
 
 void memory_init()
 {
-    printk("[mem] memory init\n");
+    LOG("memory init\n");
     //内存状态的检测
-    printk("[mem] total mem size is %d KB\n",device_info->mem_upper);
+    LOG("total mem size is %d KB\n",device_info->mem_upper);
     if (device_info->flags & (1 << 6))
     {
         multiboot_memory_map_t *mmap;
 
-        printk ("mmap_addr = 0x%x, mmap_length = 0x%x\n",
+        LOG("mmap_addr = 0x%x, mmap_length = 0x%x\n",
                 (unsigned) device_info->mmap_addr, (unsigned) device_info->mmap_length);
         /*
          * 这段代码其实我也没搞懂，官方文档没有详细介绍mmap的内存结构
@@ -80,7 +80,7 @@ void memory_init()
              (unsigned long) mmap < device_info->mmap_addr + device_info->mmap_length;
              mmap = (multiboot_memory_map_t *) ((unsigned long) mmap
                                                 + mmap->size + sizeof (mmap->size))) {
-            printk(" size = 0x%x, base_addr = 0x%x%08x,"
+            LOG(" size = 0x%x, base_addr = 0x%x%08x,"
                    " length = 0x%x%08x, type = 0x%x\n",
                    (unsigned) mmap->size,
                    (unsigned) (mmap->addr >> 32),
@@ -95,13 +95,13 @@ void memory_init()
             }
         }
     }
-    printk("[mem]mem base 0x%X size: 0x%X\n",memory_base,memory_size);
+    LOG("mem base 0x%X size: 0x%X\n",memory_base,memory_size);
     total_page = IDX(memory_size);
-    printk("[mem] total page 0x%x\n",total_page);
+    LOG("total page 0x%x\n",total_page);
     page_map = (void*)memory_base;  //开头的内存分配给内存表
     memory_base += ((total_page / PAGE_SIZE) + 1) * 4096;//表要能记录total_page个内存
     memory_size -= ((total_page / PAGE_SIZE) + 1) * 4096;//那么剩余的内存就减少了
-    printk("[mem] can use mem base 0x%X size: 0x%X\n",memory_base,memory_size);
+    LOG("can use mem base 0x%X size: 0x%X\n",memory_base,memory_size);
     for(size_t index=0;index < total_page;index++)
         page_map[index] = 0; //设置为全0
     mapping_init();
@@ -141,7 +141,7 @@ void mapping_init()
     page_entry_t* pte = get_page(); // 取一页内存用作页表
     memset(page_table,0,PAGE_SIZE); // 全0可以使present为0 便于触发缺页中断
     memset(pte,0,PAGE_SIZE);
-    printk("[mem] page_table at 0x%x\n",page_table);
+    LOG("page_table at 0x%x\n",page_table);
 
     entry_init(&page_table[0],IDX((u32)pte));   // 页目录0->内核页表
     for(u32 index=0;index < PAGE_SIZE/4; index++)// 映射一张页表 总计4M

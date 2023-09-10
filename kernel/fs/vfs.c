@@ -3,6 +3,7 @@
 //
 
 #include <nar/vfs.h>
+#include <nar/panic.h>
 #include <nar/printk.h>
 #include "fat.h"
 
@@ -10,34 +11,23 @@ FATFS rootfs; //根文件系统内存
 
 void vfs_init()
 {
-    printk("rootfs addr: 0x%X\n",&rootfs);
-    int res = f_mount(&rootfs,"0:/",0);
-    if(res == 0)printk("mount rootfs success\n");
+    //printk("scan disk\n");
 
-    DIR dir;
-    FILINFO fno;
-    int nfile, ndir;
-    //f_mkdir("/dev/");
-    f_chmod("/nar", AM_SYS ,0xff);
-
-
-    res = f_opendir(&dir, "/");                       /* Open the directory */
-    if (res == FR_OK) {
-        nfile = ndir = 0;
-        for (;;) {
-            res = f_readdir(&dir, &fno);                   /* Read a directory item */
-            if (res != FR_OK || fno.fname[0] == 0) break;  /* Error or end of dir */
-            if (fno.fattrib & AM_DIR) {            /* Directory */
-                printk("<DIR>   %s attr: %x\n", fno.fname,fno.fattrib);
-                ndir++;
-            } else {                               /* File */
-                printk("<FILE>  %d %s attr: %x\n",(unsigned int)fno.fsize,fno.fname,fno.fattrib);
-                nfile++;
+    //如果GRUB数据有效 则显示所有硬盘状态
+    if (device_info->flags & (1<<7)) {
+        printk("scan disk ok\n");
+        for (multiboot_disk_info *diskInfo = (void *) device_info->drives_addr;
+             diskInfo < (multiboot_disk_info *) (device_info->drives_addr + device_info->drives_length);
+             diskInfo = (multiboot_disk_info *) ((uint32_t) diskInfo + diskInfo->size)) {
+            LOG("drive_number: %d mode:%d\n", diskInfo->disk_number, diskInfo->drive_ports);
+            int i = 0;
+            while (diskInfo->drive_ports[i] != 0) {
+                printk("port %d : %d", diskInfo->drive_ports[i]);
             }
         }
-        f_closedir(&dir);
-        printk("%d dirs, %d files.\n", ndir, nfile);
-    } else {
-        printk("Failed to open \"%s\". (%u)\n", "/", res);
     }
+    //挂在根文件系统
+    int res = f_mount(&rootfs,"0:/",0);
+    if(res == 0)LOG("mount rootfs success\n");
+    else LOG("mount rootfs fault\n");
 }

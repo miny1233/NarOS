@@ -281,6 +281,17 @@ struct multiboot_apm_info
     multiboot_uint16_t dseg_len;
 };
 
+typedef struct multiboot_disk_info
+{
+    multiboot_uint32_t size;
+    multiboot_uint8_t disk_number;
+    multiboot_uint8_t drive_mode;
+    multiboot_uint16_t drive_cylinders;
+    multiboot_uint8_t drive_heads;
+    multiboot_uint8_t drive_sectors;
+    multiboot_uint16_t drive_ports[1];
+}multiboot_disk_info;
+
 #endif /* ! ASM_FILE */
 
 #endif /* ! MULTIBOOT_HEADER */
