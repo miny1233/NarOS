@@ -8,7 +8,7 @@
 /*-----------------------------------------------------------------------*/
 
 #include "../kernel/fs/fat/fat.h"        /* Obtains integer types */
-#include <device/diskio.h>	/* Declarations of disk functions */
+#include "../kernel/fs/fat/diskio.h"    /* Declarations of disk functions */
 #include <device/ata.h> /* ATA总线驱动程序 */
 
 /* Definitions of physical drive number for each drive */

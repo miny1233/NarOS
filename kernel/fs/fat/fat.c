@@ -22,7 +22,7 @@
 #include "string.h"
 #include "memory.h"
 #include "fat.h"            /* Declarations of FatFs API */
-#include "device/diskio.h"    /* Declarations of device I/O functions */
+#include "diskio.h"    /* Declarations of device I/O functions */
 
 
 /*--------------------------------------------------------------------------

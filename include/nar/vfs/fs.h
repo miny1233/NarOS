@@ -7,9 +7,12 @@
 #ifndef NAROS_FS_H
 #define NAROS_FS_H
 
+#include <device/dev.h>
+
 typedef struct fs{
     char name[64];  //文件系统名称
-
+    int (*mount)(struct fs*,dev_t dev);
+    int (*unmount)(struct fs*);
 }fs_t;
 
 

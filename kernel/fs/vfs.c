@@ -7,10 +7,28 @@
 #include <nar/printk.h>
 #include <nar/vfs/inode.h>
 #include <nar/vfs/fs.h>
+#include <device/dev.h>
+#include <device/ata.h>
 
 #include "fat/fat.h"
 
-FATFS rootfs; //根文件系统内存
+dev_t root_dev; //根设备
+
+static int root_dev_read(dev_t* dev,void *buf,size_t seek,size_t size)
+{
+    if (dev->dev_id != 0)
+        return -1;
+    ata_disk_read(seek,buf,(u8)size);
+    return 0;
+}
+
+static int root_dev_write(dev_t* dev,void *data,size_t seek,size_t size)
+{
+    if (dev->dev_id != 0)
+        return -1;
+    ata_disk_write(seek,data,(u8)size);
+    return 0;
+}
 
 void vfs_init()
 {
@@ -28,8 +46,12 @@ void vfs_init()
         }
     }
 
-    inode_t* i;
-    //挂载根文件系统
+    //制作一个根设备
+    root_dev.dev_id = 0;
+    root_dev.dev_type = 0;
+    root_dev.read = root_dev_read;
+    root_dev.write = root_dev_write;
+
     //int res = f_mount(&rootfs,"0:/",0);
     //if(res == 0)LOG("mount rootfs success\n");
     //else LOG("mount rootfs fault\n");
