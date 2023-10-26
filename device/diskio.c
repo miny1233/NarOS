@@ -7,7 +7,7 @@
 /* storage control modules to the FatFs module with a defined API.       */
 /*-----------------------------------------------------------------------*/
 
-#include <../kernel/fs/fat.h>		/* Obtains integer types */
+#include "../kernel/fs/fat/fat.h"        /* Obtains integer types */
 #include <device/diskio.h>	/* Declarations of disk functions */
 #include <device/ata.h> /* ATA总线驱动程序 */
 

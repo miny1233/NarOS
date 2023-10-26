@@ -67,9 +67,13 @@ task_t* task_create(void *entry) {
     asm("cli"); // 保证原子操作 否则可能会调度出错
     // 为新任务设置内存
     void* start_mem = get_page();   //申请一页内存 4k
-    void* end_mem = start_mem + PAGE_SIZE - 1;  // 页尾
-    void* stack_mem = (end_mem - 3) - sizeof(int_frame);// 内存对齐
-    stack_init(start_mem,entry);
+    //对于end_mem的操作可能有人会问这不内存越界了
+    //实际上intel处理器的入栈操作是放入内存[esp - size]
+    //而并非先push再减小esp
+    //这种设计是好的，只需要esp的地址是对齐的，那么就不可能内存不对齐
+    void* end_mem = start_mem + PAGE_SIZE;  // 最后一个地址 + 1
+    void* stack_mem = end_mem - sizeof(int_frame);// 内存对齐
+    stack_init(stack_mem,entry);
     for(u32 task_idx=1;task_idx < MAX_TASK_NUM;task_idx++)
     {
         if(task_list[task_idx].pid == 0)    //无任务
@@ -77,8 +81,8 @@ task_t* task_create(void *entry) {
             // 设置进程信息
             task_list[task_idx].pid = ++pid_total;
             task_list[task_idx].next = running->next;
-            task_list[task_idx].esp = (u32)&(((int_frame*)start_mem)->ret);
-            task_list[task_idx].ebp = (u32)start_mem + sizeof(int_frame);
+            task_list[task_idx].esp = (u32)&(((int_frame*)stack_mem)->ret);
+            task_list[task_idx].ebp = (u32)stack_mem + sizeof(int_frame);
             running->next = &task_list[task_idx];
             process_num++;  //运行任务数+1
             asm("sti");

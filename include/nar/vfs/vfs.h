@@ -5,8 +5,8 @@
 #ifndef NAROS_VFS_H
 #define NAROS_VFS_H
 
-#include "../../kernel/fs/fat.h"
-#include <nar/multiboot.h>
+#include "../../../kernel/fs/fat/fat.h"
+#include "../multiboot.h"
 
 typedef int fd_t;   //文件描述
 

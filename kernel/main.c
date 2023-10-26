@@ -11,10 +11,16 @@
 #include <memory.h>
 #include <nar/multiboot.h>
 #include <nar/globa.h>
-#include "nar/vfs.h"
+#include "nar/vfs/vfs.h"
 
 void child()
 {
+    while(1) {
+        int i = 1e8;
+        while(--i);
+        printk("I am Child\n");
+    }
+    //while(1);
     task_exit();
 }
 
@@ -37,9 +43,7 @@ int init(unsigned long magic, multiboot_info_t* _info)
     interrupt_hardler_register(0x21,keyboard_handler);
     set_interrupt_mask(1,1); //启动键盘中断
     
-    //task_create(child);
+    task_create(child);
 
-
-    
     return 0; //初始化完毕，初始化程序变idle程序
 }

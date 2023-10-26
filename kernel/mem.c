@@ -64,7 +64,7 @@ void memory_init()
 {
     LOG("memory init\n");
     //内存状态的检测
-    LOG("total mem size is %d KB\n",device_info->mem_upper);
+    LOG("total mem size is %d MB\n",device_info->mem_upper >> 10);
     if (device_info->flags & (1 << 6))
     {
         multiboot_memory_map_t *mmap;
@@ -72,9 +72,9 @@ void memory_init()
         LOG("mmap_addr = 0x%x, mmap_length = 0x%x\n",
                 (unsigned) device_info->mmap_addr, (unsigned) device_info->mmap_length);
         /*
-         * 这段代码其实我也没搞懂，官方文档没有详细介绍mmap的内存结构
          * 不过在下方的事例程序中提供了这样一段代码
          * https://www.gnu.org/software/grub/manual/multiboot/multiboot.html#kernel_002ec
+         * 这个结构是比较离谱的size成员在-4字节处
          */
         for (mmap = (multiboot_memory_map_t *) device_info->mmap_addr;
              (unsigned long) mmap < device_info->mmap_addr + device_info->mmap_length;
