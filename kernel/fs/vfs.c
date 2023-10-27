@@ -52,6 +52,8 @@ void vfs_init()
     root_dev.read = root_dev_read;
     root_dev.write = root_dev_write;
 
+    inode_t *inode;
+
     //int res = f_mount(&rootfs,"0:/",0);
     //if(res == 0)LOG("mount rootfs success\n");
     //else LOG("mount rootfs fault\n");

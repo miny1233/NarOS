@@ -16,17 +16,19 @@ typedef struct inode {
     char name[64];  // 名称
     int type;       // 类型
     int iid;        // inode编号
-
-    int(*rm)(struct inode*); // 删除元数据和文件
+    // 删除元数据和文件
+    int(*rm)(struct inode*);
     //文件夹和文件的操作是不同的
     union {
         struct {
             //文件读写
             int(*read)(struct inode*,void* buf,int seek,int size);
             int(*write)(struct inode*,void* buf,int seek,int size);
-        };
-        //获取文件夹的所有元数据
-        int (*get_inode)(struct inode* inode_list);
+        } file;
+        struct {
+            //获取文件夹的所有元数据
+            int (*get_inode)(struct inode *inode_list);
+        } dir;
     };
 }inode_t;
 

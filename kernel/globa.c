@@ -17,7 +17,7 @@ static void descriptor_init(descriptor_t *desc, u32 base, u32 limit)
     desc->limit_high = (limit >> 16) & 0xf;
 }
 
-void load_segment()
+static void load_segment()
 {
     asm (" movl $0x10,%eax\n"
          " movl %eax,%ds\n"
