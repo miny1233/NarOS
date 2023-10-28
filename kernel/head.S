@@ -1,6 +1,6 @@
 #define ASM_FILE        1
 #include <nar/multiboot.h>
-#define STACK_SIZE  0x4000
+#define STACK_SIZE  0x200000
 .global _init
 #define AOUT_KLUDGE MULTIBOOT_AOUT_KLUDGE
 #define MULTIBOOT_HEADER_FLAGS                  MULTIBOOT_PAGE_ALIGN | MULTIBOOT_MEMORY_INFO

@@ -21,7 +21,7 @@ typedef struct page_entry_t
     u32 index : 20;  // 页索引
 }__attribute__((packed)) page_entry_t;
 
-u32 memory_base = 0x200000;  //由于GRUB把内核载入到了1M处，为了保证安全至少从2M开始有效
+u32 memory_base = 0;  //由于GRUB把内核载入到了1M处，为了保证安全至少从2M开始有效
 u32 memory_size = 0;
 u32 total_page;
 
@@ -29,6 +29,8 @@ u32 total_page;
 #define TIDX(addr) (((u32)(addr) >> 12) & 0x3ff) // 获取 addr 的页表索引
 #define IDX(addr) ((u32)(addr) >> 12) // 取页索引
 #define PAGE(idx) ((u32)(idx) << 12)  // 取页启始
+
+#define KERNEL_MEM_SPACE 0x400000 // 4MB 内核专用内存 (不可用于内存分配)
 
 u8* page_map;
 
@@ -94,12 +96,21 @@ void memory_init()
             }
         }
     }
+    //grub载入内核也会载入到可用内存上 所以必须为内核空出一定的空间
+    //grub是从低到高载入的 所以只需要让出地位的内存
+    memory_base += KERNEL_MEM_SPACE;
+    memory_size -= KERNEL_MEM_SPACE;
+
     LOG("mem base 0x%X size: 0x%X\n",memory_base,memory_size);
+
     total_page = IDX(memory_size);
     LOG("total page 0x%x\n",total_page);
+
     page_map = (void*)memory_base;  //开头的内存分配给内存表
-    memory_base += ((total_page / PAGE_SIZE) + 1) * 4096;//表要能记录total_page个内存
-    memory_size -= ((total_page / PAGE_SIZE) + 1) * 4096;//那么剩余的内存就减少了
+    memory_base += ((total_page / PAGE_SIZE) + 1) * PAGE_SIZE;  //表要能记录total_page个内存
+    memory_size -= ((total_page / PAGE_SIZE) + 1) * PAGE_SIZE;  //那么剩余的内存就减少了
+    total_page -= (total_page / PAGE_SIZE) + 1;                 //总可用页数减少
+
     LOG("can use mem base 0x%X size: 0x%X\n",memory_base,memory_size);
     for(size_t index=0;index < total_page;index++)
         page_map[index] = 0; //设置为全0
@@ -138,14 +149,18 @@ static void mapping_init()
 
     page_table = get_page(); // 取一页内存用作页目录
     page_entry_t* pte = get_page(); // 取一页内存用作页表
+    page_entry_t* pte1 = get_page();// 再取一页做页表 内存不够用了
     memset(page_table,0,PAGE_SIZE); // 全0可以使present为0 便于触发缺页中断
     memset(pte,0,PAGE_SIZE);
+    memset(pte1,0,PAGE_SIZE);
     LOG("page_table at 0x%x\n",page_table);
 
     entry_init(&page_table[0],IDX((u32)pte));   // 页目录0->内核页表
-    for(u32 index=0;index < PAGE_SIZE/4; index++)// 映射一张页表 总计4M
+    entry_init(&page_table[1],IDX((u32)pte1));  // 页目录1->内核页表1
+    for(u32 index=0;index < PAGE_SIZE / 4; index++)// 映射一张页表 总计8M
     {
         entry_init(&pte[index],index);   // 映射物理内存在原来的位置
+        entry_init(&pte1[index],PAGE_SIZE / 4 + index);
     }
     set_cr3((u32)page_table); // cr3指向页目录
     enable_page();
@@ -153,5 +168,5 @@ static void mapping_init()
 
 void mmap(void* addr,void* vaddr)
 {
-
+    
 }
