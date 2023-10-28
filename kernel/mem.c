@@ -89,8 +89,7 @@ void memory_init()
                    (unsigned) (mmap->len & 0xffffffff),
                    (unsigned) mmap->type);
             if (memory_size < (mmap->len & 0xffffffff) && mmap->type == 0x1) {
-                memory_base = (mmap->addr & 0xffffffff) > memory_base ?
-                              (mmap->addr & 0xffffffff) : memory_base;
+                memory_base = (mmap->addr & 0xffffffff);
                 memory_size = (mmap->len & 0xffffffff);
             }
         }
