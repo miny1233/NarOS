@@ -44,7 +44,7 @@ void child()
     int count = 3;
     while(count--)
     {
-        int p = 10e8;
+        int p = (int)10e8;
         while(p--);
         printk("Child\n");
     }

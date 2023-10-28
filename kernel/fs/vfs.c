@@ -7,14 +7,16 @@
 #include <nar/printk.h>
 #include <nar/vfs/inode.h>
 #include <nar/vfs/fs.h>
-#include <device/dev.h>
 #include <device/ata.h>
-
-#include "fat/fat.h"
+#include <type.h>
+#include <string.h>
+#include <memory.h>
+#include <nar/task.h>
 
 dev_t root_dev; //根设备
+inode_t *root_inode;//根节点
 
-static int root_dev_read(dev_t* dev,void *buf,size_t seek,size_t size)
+static int root_dev_read(struct dev_t *dev, void *buf, size_t seek, size_t size)
 {
     if (dev->dev_id != 0)
         return -1;
@@ -28,6 +30,22 @@ static int root_dev_write(dev_t* dev,void *data,size_t seek,size_t size)
         return -1;
     ata_disk_write(seek,data,(u8)size);
     return 0;
+}
+
+fs_t filesystem_list[FS_LIST_SIZE];
+char registered_fs[FS_LIST_SIZE];
+
+//注册一个文件系统
+int fs_register(fs_t filesystem)
+{
+    for(int i = 0;i < FS_LIST_SIZE ;i++) {
+        if(registered_fs[i] == 0) {
+            filesystem_list[i] = filesystem;
+            registered_fs[i] = 1;
+            return i;
+        }
+    }
+    return -1;
 }
 
 void vfs_init()
@@ -48,26 +66,52 @@ void vfs_init()
 
     //制作一个根设备
     root_dev.dev_id = 0;
-    root_dev.dev_type = 0;
+    root_dev.dev_type = DEV_DISK;
     root_dev.read = root_dev_read;
     root_dev.write = root_dev_write;
 
-    inode_t *inode;
+    if(!registered_fs[0])panic("Cannot Find Root FileSystem");
 
-    //int res = f_mount(&rootfs,"0:/",0);
-    //if(res == 0)LOG("mount rootfs success\n");
-    //else LOG("mount rootfs fault\n");
+    fs_t *root_fs = &filesystem_list[0];
+    root_inode = root_fs->get_super_inode();    //挂载根节点
 }
 
-//注册一个文件系统
-void fs_register(fs_t* filesystem)
-{
-
-}
-
-
+//暂时不支持相对寻址
 int open(char* path)
 {
-
+    char* start = strsep(path);
+    if(start == NULL || !root_inode->usable)return -1;
+    inode_t inode_ls[128];  //一个文件夹下最多128个文件
+    inode_t* pwd = root_inode;
+    while(true)
+    {
+        start = strsep(start) + 1;
+        char* end = strsep(start);
+        for(char* ch = start;ch != end && *ch != 0;ch++)
+        {
+            if(pwd->usable && pwd->type == INODE_DIR)
+            {
+                memset(inode_ls,0,sizeof inode_ls);
+                pwd->dir.get_inode(inode_ls);
+                for(int index = 0;index < 128;index++)
+                {
+                    if(inode_ls[index].usable && !strcmp(inode_ls[index].name,start))
+                        pwd = &inode_ls[index];
+                }
+            }
+        }
+        if(end == NULL)break;
+    }
+    if(!strcmp(pwd->name,start))
+    {
+        int fd = 0;
+        for(;fd < 32;fd++) {
+            if (!running->files[fd].usable) {
+                running->files[fd] = *pwd;   // 拷贝元数据
+                break;
+            }
+        }
+        return fd < 32 ? fd : -1;   // 有可能出现打开文件过多的情况
+    }
     return -1;
 }

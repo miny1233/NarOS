@@ -2,6 +2,8 @@
 #define false 0
 #define true 1
 
+#define EOS 0
+
 typedef unsigned int size_t;
 typedef unsigned long long int u64;
 typedef unsigned int u32;
