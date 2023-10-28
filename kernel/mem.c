@@ -58,7 +58,7 @@ static void entry_init(page_entry_t *entry, u32 index)
     entry->index = index;
 }
 
-void mapping_init(); // 映射页
+static void mapping_init(); // 映射页
 
 void memory_init()
 {
@@ -72,7 +72,7 @@ void memory_init()
         LOG("mmap_addr = 0x%x, mmap_length = 0x%x\n",
                 (unsigned) device_info->mmap_addr, (unsigned) device_info->mmap_length);
         /*
-         * 不过在下方的事例程序中提供了这样一段代码
+         * 事例程序中提供了这样一段代码
          * https://www.gnu.org/software/grub/manual/multiboot/multiboot.html#kernel_002ec
          * 这个结构是比较离谱的size成员在-4字节处
          */
@@ -133,7 +133,7 @@ void page_int(u32 vector)   // 缺页中断
     panic("Error: Segment Failed\n");
 }
 
-void mapping_init()
+static void mapping_init()
 {
     interrupt_hardler_register(0x0e, page_int); //注册缺页中断
 
