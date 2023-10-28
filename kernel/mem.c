@@ -67,10 +67,10 @@ void memory_init()
     LOG("memory init\n");
     //内存状态的检测
     LOG("total mem size is %d MB\n",device_info->mem_upper >> 10);
-    if (device_info->flags & (1 << 6))
-    {
-        multiboot_memory_map_t *mmap;
 
+    if (!(device_info->flags & (1 << 6)))panic("Cannot Scan Memory!");
+
+        multiboot_memory_map_t *mmap;
         LOG("mmap_addr = 0x%x, mmap_length = 0x%x\n",
                 (unsigned) device_info->mmap_addr, (unsigned) device_info->mmap_length);
         /*
@@ -95,9 +95,9 @@ void memory_init()
                 memory_size = (mmap->len & 0xffffffff);
             }
         }
-    }
+
     //grub载入内核也会载入到可用内存上 所以必须为内核空出一定的空间
-    //grub是从低到高载入的 所以只需要让出地位的内存
+    //grub是从低到高载入的 所以只需要让出低位的内存
     memory_base += KERNEL_MEM_SPACE;
     memory_size -= KERNEL_MEM_SPACE;
 
@@ -168,5 +168,5 @@ static void mapping_init()
 
 void mmap(void* addr,void* vaddr)
 {
-    
+
 }
