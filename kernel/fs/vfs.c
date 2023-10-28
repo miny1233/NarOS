@@ -107,7 +107,7 @@ int open(char* path)
         int fd = 0;
         for(;fd < 32;fd++) {
             if (!running->files[fd].usable) {
-                running->files[fd] = *pwd;   // 拷贝元数据
+                running->files[fd] = *pwd;   // 拷贝元数据 到 进程控制块
                 break;
             }
         }
