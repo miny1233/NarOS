@@ -13,16 +13,7 @@
 #include <nar/globa.h>
 #include "nar/vfs/vfs.h"
 
-void child()
-{
-    while(1) {
-        int i = 1e8;
-        while(--i);
-        printk("I am Child\n");
-    }
-    //while(1);
-    task_exit();
-}
+void child();
 
 multiboot_info_t* device_info;
 int init(unsigned long magic, multiboot_info_t* _info)
@@ -46,4 +37,16 @@ int init(unsigned long magic, multiboot_info_t* _info)
     task_create(child);
 
     return 0; //初始化完毕，初始化程序变idle程序
+}
+
+void child()
+{
+    int count = 3;
+    while(count--)
+    {
+        int p = 10e8;
+        while(p--);
+        printk("Child\n");
+    }
+    task_exit();
 }

@@ -9,14 +9,17 @@ typedef u32 pid_t;
 
 // 双向循环链表
 // 本来应该是这样，但是暂时用循环链表实现
-typedef struct task_t
+// 进程控制块
+typedef struct pcb_t
 {
     u32 ebp;
     u32 esp;
-    struct task_t* next;    // 下一个任务
+    struct pcb_t* next;    // 下一个任务
     pid_t pid;
     //需要用内存位图来管理使用的内存
-}task_t;
+} pcb_t;
+
+typedef pcb_t task_t;   //task_t 与 pcb_t 都是进程控制块
 
 // 中断帧
 typedef struct {
@@ -33,7 +36,7 @@ typedef struct {
     u32 eip;
     u32 cs;
     u32 eflags;
-}__attribute__((packed)) int_frame;
+}__attribute__((packed)) interrupt_stack_frame;
 
 void schedule(task_t* this,task_t* next); // 定义在schedule.s中
 

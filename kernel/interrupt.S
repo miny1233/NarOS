@@ -11,7 +11,7 @@ interrupt_handler_\vector:
  shl $2,%ebx
  mov interrupt_hardler_list(%ebx),%eax
  call *%eax
- pop %eax  #维护栈平衡而已 没有特殊意义
+ pop %eax  #维护栈平衡而已 没有特殊意义 (+19)
  popa
  iret
 .endm

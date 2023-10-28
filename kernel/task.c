@@ -50,12 +50,12 @@ void task_init()
 
 }
 // 初始化中断栈
-static void stack_init(int_frame* stack,void* entry)
+static void stack_init(interrupt_stack_frame* stack,void* entry)
 {
-    extern u32 interrupt_handler_0x20;  //时钟中断
-    stack->ret = (u32)&interrupt_handler_0x20 + 19;  //需要使用取地址符号 外部声明是u32函数会被当作变量
+    extern void interrupt_handler_0x20();  //时钟中断
+    stack->ret = (u32)interrupt_handler_0x20 + 19;  //需要使用取地址符号 外部声明是u32函数会被当作变量
     stack->vector = 0x20;
-    stack->ebp = (u32)stack + sizeof(int_frame);
+    stack->ebp = (u32)stack + sizeof(interrupt_stack_frame);
     stack->esp = stack->ebp;
     stack->eip = (u32)entry;
     stack->cs = KERNEL_CODE_SELECTOR;
@@ -72,7 +72,7 @@ task_t* task_create(void *entry) {
     //而并非先push再减小esp
     //这种设计是好的，只需要esp的地址是对齐的，那么就不可能内存不对齐
     void* end_mem = start_mem + PAGE_SIZE;  // 最后一个地址 + 1
-    void* stack_mem = end_mem - sizeof(int_frame);// 内存对齐
+    void* stack_mem = end_mem - sizeof(interrupt_stack_frame);// 内存对齐
     stack_init(stack_mem,entry);
     for(u32 task_idx=1;task_idx < MAX_TASK_NUM;task_idx++)
     {
@@ -81,8 +81,8 @@ task_t* task_create(void *entry) {
             // 设置进程信息
             task_list[task_idx].pid = ++pid_total;
             task_list[task_idx].next = running->next;
-            task_list[task_idx].esp = (u32)&(((int_frame*)stack_mem)->ret);
-            task_list[task_idx].ebp = (u32)stack_mem + sizeof(int_frame);
+            task_list[task_idx].esp = (u32)&(((interrupt_stack_frame*)stack_mem)->ret);
+            task_list[task_idx].ebp = (u32)stack_mem + sizeof(interrupt_stack_frame);
             running->next = &task_list[task_idx];
             process_num++;  //运行任务数+1
             asm("sti");

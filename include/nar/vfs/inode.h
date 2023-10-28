@@ -30,6 +30,7 @@ typedef struct inode {
             int (*get_inode)(struct inode *inode_list);
         } dir;
     };
+    void* sp;   //留给inode管理者使用
 }inode_t;
 
 #endif //NAROS_INODE_H
