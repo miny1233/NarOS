@@ -70,31 +70,30 @@ void memory_init()
 
     if (!(device_info->flags & (1 << 6)))panic("Cannot Scan Memory!");
 
-        multiboot_memory_map_t *mmap;
-        LOG("mmap_addr = 0x%x, mmap_length = 0x%x\n",
-                (unsigned) device_info->mmap_addr, (unsigned) device_info->mmap_length);
-        /*
-         * 事例程序中提供了这样一段代码
-         * https://www.gnu.org/software/grub/manual/multiboot/multiboot.html#kernel_002ec
-         * 这个结构是比较离谱的size成员在-4字节处
-         */
-        for (mmap = (multiboot_memory_map_t *) device_info->mmap_addr;
-             (unsigned long) mmap < device_info->mmap_addr + device_info->mmap_length;
-             mmap = (multiboot_memory_map_t *) ((unsigned long) mmap
-                                                + mmap->size + sizeof (mmap->size))) {
-            LOG(" size = 0x%x, base_addr = 0x%x%08x,"
-                   " length = 0x%x%08x, type = 0x%x\n",
-                   (unsigned) mmap->size,
-                   (unsigned) (mmap->addr >> 32),
-                   (unsigned) (mmap->addr & 0xffffffff),
-                   (unsigned) (mmap->len >> 32),
-                   (unsigned) (mmap->len & 0xffffffff),
-                   (unsigned) mmap->type);
-            if (memory_size < (mmap->len & 0xffffffff) && mmap->type == 0x1) {
-                memory_base = (mmap->addr & 0xffffffff);
-                memory_size = (mmap->len & 0xffffffff);
-            }
+    multiboot_memory_map_t *mmap;
+    LOG("mmap_addr = 0x%x, mmap_length = 0x%x\n",(unsigned) device_info->mmap_addr, (unsigned) device_info->mmap_length);
+    /*
+    * 事例程序中提供了这样一段代码
+    * https://www.gnu.org/software/grub/manual/multiboot/multiboot.html#kernel_002ec
+    * 这个结构是比较离谱的size成员在-4字节处
+    */
+    for (mmap = (multiboot_memory_map_t *) device_info->mmap_addr;
+    (unsigned long) mmap < device_info->mmap_addr + device_info->mmap_length;
+    mmap = (multiboot_memory_map_t *) ((unsigned long) mmap
+            + mmap->size + sizeof (mmap->size))) {
+        LOG(" size = 0x%x, base_addr = 0x%x%08x,"
+            " length = 0x%x%08x, type = 0x%x\n",
+            (unsigned) mmap->size,
+            (unsigned) (mmap->addr >> 32),
+            (unsigned) (mmap->addr & 0xffffffff),
+            (unsigned) (mmap->len >> 32),
+            (unsigned) (mmap->len & 0xffffffff),
+            (unsigned) mmap->type);
+        if (memory_size < (mmap->len & 0xffffffff) && mmap->type == 0x1) {
+            memory_base = (mmap->addr & 0xffffffff);
+            memory_size = (mmap->len & 0xffffffff);
         }
+    }
 
     //grub载入内核也会载入到可用内存上 所以必须为内核空出一定的空间
     //grub是从低到高载入的 所以只需要让出低位的内存
