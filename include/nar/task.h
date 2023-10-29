@@ -4,7 +4,7 @@
 #define MAX_TASK_NUM 128
 
 #include <nar/globa.h>
-#include <nar/vfs/inode.h>
+#include <nar/fs/inode.h>
 
 typedef u32 pid_t;
 

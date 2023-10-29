@@ -11,7 +11,7 @@
 #include <memory.h>
 #include <nar/multiboot.h>
 #include <nar/globa.h>
-#include "nar/vfs/vfs.h"
+#include <nar/fs/vfs.h>
 
 void child();
 

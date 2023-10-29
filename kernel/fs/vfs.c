@@ -2,11 +2,11 @@
 // Created by 谢子南 on 2023/9/8.
 //
 
-#include <nar/vfs/vfs.h>
+#include <nar/fs/vfs.h>
 #include <nar/panic.h>
 #include <nar/printk.h>
-#include <nar/vfs/inode.h>
-#include <nar/vfs/fs.h>
+#include <nar/fs/inode.h>
+#include <nar/fs/fs.h>
 #include <device/ata.h>
 #include <type.h>
 #include <string.h>
