@@ -28,13 +28,14 @@ int init(unsigned long magic, multiboot_info_t* _info)
     interrupt_init();   // 中断处理
     memory_init();      // 内存管理
     task_init();        // 任务调度
-    vfs_init();          // 文件系统初始化
+    //vfs_init();          // 文件系统初始化
     //pipe_init();
     // 外围设备
     interrupt_hardler_register(0x21,keyboard_handler);
     set_interrupt_mask(1,1); //启动键盘中断
     
-    //task_create(child);
+    task_create(child);
+    //while(1)printk("cr3 = %d\n",running->cr3);
 
     return 0; //初始化完毕，初始化程序变idle程序
 }
@@ -47,6 +48,8 @@ void child()
         int p = (int)10e8;
         while(p--);
         printk("Child\n");
+        int* pt = (void*)0xffffffff;
+        *pt = 1;
     }
     task_exit();
 }

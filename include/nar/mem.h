@@ -6,10 +6,13 @@
 #define NAROS_MEM_H
 
 #define PAGE_SIZE 0x1000        // 4k Page
-#define MEMORY_SIZE 0x1EE0000   // 由于引导程序的设计，导致无法读取可用内存页
+
+#include <type.h>
 
 void memory_init();
 void* get_page();
 void put_page(void* addr);
+
+u32 get_cr3();
 
 #endif //NAROS_MEM_H

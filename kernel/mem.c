@@ -17,7 +17,7 @@ typedef struct page_entry_t
     u8 dirty : 1;    // 脏页，表示该页缓冲被写过
     u8 pat : 1;      // page attribute table 页大小 4K/4M
     u8 global : 1;   // 全局，所有进程都用到了，该页不刷新缓冲
-    u8 ignored : 3;  // 为操作系统保留
+    u8 ignored : 3;  // 为操作系统保留 (Nar中用于记录这个内存是否是当前程序从内存中申请的内存)
     u32 index : 20;  // 页索引
 }__attribute__((packed)) page_entry_t;
 
@@ -36,7 +36,7 @@ u8* page_map;
 
 page_entry_t* page_table;  // 页目录
 
-static u32 get_cr3(){
+u32 get_cr3(){
     asm volatile("movl %cr3,%eax\n");
 }
 static void set_cr3(u32 pde){
@@ -134,7 +134,8 @@ void put_page(void* addr)
     assert((u32)addr >= memory_base && (u32)addr < memory_base + memory_size); // 内存必须在可用区域
     size_t index = IDX((u32)addr - memory_base);
     assert(index < total_page); //不能比总页面数大
-    page_map[index] = 0;
+    assert(page_map[index] != 0);//引用次数不能为0
+    page_map[index]--;  // 内存引用次数减少
 }
 
 void page_int(u32 vector)   // 缺页中断
@@ -144,7 +145,7 @@ void page_int(u32 vector)   // 缺页中断
 
 static void mapping_init()
 {
-    interrupt_hardler_register(0x0e, page_int); //注册缺页中断
+    //interrupt_hardler_register(0x0e, page_int); //注册缺页中断
 
     page_table = get_page(); // 取一页内存用作页目录
     page_entry_t* pte = get_page(); // 取一页内存用作页表

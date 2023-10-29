@@ -6,8 +6,7 @@
 #include <nar/mem.h>
 #include <memory.h>
 #include <nar/panic.h>
-
-#include "nar/debug.h"
+#include <nar/debug.h>
 
 task_t *running;        // 当前运行的任务
 size_t process_num = 0; // 运行任务数
@@ -18,10 +17,12 @@ void clock_int(int vector)
 {
     assert(vector == 0x20);
     send_eoi(vector);
+
     task_t *back_task = running;
     next_task:
-     running = running->next;
-    if(process_num > 1 && running->pid == 0)goto next_task;
+        running = running->next;
+    if(process_num > 1 && running->pid == 0)
+        goto next_task;
     schedule(back_task, running);
 }
 
@@ -64,7 +65,7 @@ static void stack_init(interrupt_stack_frame* stack,void* entry)
 // 创建任务 需要提供程序入口
 task_t* task_create(void *entry) {
     assert(process_num <= MAX_TASK_NUM); // 任务是否超过最大限度
-    asm("cli"); // 保证原子操作 否则可能会调度出错
+    set_interrupt_state(0); // 保证原子操作 否则可能会调度出错
     // 为新任务设置内存
     void* start_mem = get_page();   //申请一页内存 4k
     //对于end_mem的操作可能有人会问这不内存越界了
@@ -83,9 +84,11 @@ task_t* task_create(void *entry) {
             task_list[task_idx].next = running->next;
             task_list[task_idx].esp = (u32)&(((interrupt_stack_frame*)stack_mem)->ret);
             task_list[task_idx].ebp = (u32)stack_mem + sizeof(interrupt_stack_frame);
+            task_list[task_idx].cr3 = get_cr3();    //与主进程共享cr3 （之后会改）
             running->next = &task_list[task_idx];
             process_num++;  //运行任务数+1
-            asm("sti");
+
+            set_interrupt_state(1); //  任务创建完毕
             return &task_list[task_idx];
         }
     }
@@ -94,7 +97,8 @@ task_t* task_create(void *entry) {
 //还需要有释放内存的功能
 void task_exit()
 {
-    asm("cli\n");
+    set_interrupt_state(0);
+
     task_t* back = &task_list[0];// 任务0是常驻任务 从这个地方开始寻找的时间总是比从running开始快得多
     while (back->next != running){
        back = back->next;   // 找到自己的上一个任务
@@ -102,6 +106,8 @@ void task_exit()
     back->next = running->next;
     running->pid = 0;   //标记任务无效
     process_num--;  // 运行任务数-1
-    asm("sti\n");
-    yield();   //切换任务
+
+    set_interrupt_state(1);
+    //任务被移除，需要强制切换来更新
+    yield();
 }

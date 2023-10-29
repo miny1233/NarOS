@@ -15,9 +15,9 @@ typedef struct pcb_t
 {
     u32 ebp;
     u32 esp;
+    u32 cr3; //在页表中ignored用于记录申请的内存
     struct pcb_t* next;    // 下一个任务
     pid_t pid;
-    //需要用内存位图来管理使用的内存
     //打开的文件
     inode_t files[32];
 } pcb_t;
