@@ -46,6 +46,7 @@ all:
 	hdiutil mount $(BUILD)/nar.img
 	cp  $(BUILD)/nar /Volumes/NAR
 	hdiutil unmount /Volumes/NAR
+	cp $(BUILD)/nar.img $(BUILD)/nar.os
 .PHONY:all
 
 build:
@@ -66,7 +67,7 @@ clean:
 QEMU:= qemu-system-i386 # 虚拟机
 QEMU+= -m 128M # 内存
 QEMU+= -rtc base=localtime # 设备本地时间
-QEMU+= -drive file=$(BUILD)/nar.img,if=ide,index=0,media=disk,format=raw # 主硬盘
+QEMU+= -drive file=$(BUILD)/nar.os,if=ide,index=0,media=disk,format=raw # 主硬盘
 QEMU+= -chardev stdio,mux=on,id=com1 # 字符设备 1
 QEMU+= -serial chardev:com1 # 串口 1
 QEMU+= -cdrom $(BUILD)/grub.iso # grub

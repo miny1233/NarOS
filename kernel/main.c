@@ -42,14 +42,5 @@ int init(unsigned long magic, multiboot_info_t* _info)
 
 void child()
 {
-    int count = 3;
-    while(count--)
-    {
-        int p = (int)10e8;
-        while(p--);
-        printk("Child\n");
-        int* pt = (void*)0xffffffff;
-        *pt = 1;
-    }
-    task_exit();
+   while(1);
 }
