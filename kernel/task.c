@@ -8,17 +8,17 @@
 #include <nar/panic.h>
 #include <nar/debug.h>
 
-task_t *running;        // 当前运行的任务
+volatile task_t *running;        // 当前运行的任务
 size_t process_num = 0; // 运行任务数
 task_t *task_list;  // 任务列表 所有任务在这里统一管理
 pid_t pid_total = 0;
 
-void clock_int(int vector)
+static void clock_int(int vector)
 {
     assert(vector == 0x20);
     send_eoi(vector);
 
-    task_t *back_task = running;
+    volatile task_t *back_task = running;
     next_task:
         running = running->next;
     if(process_num > 1 && running->pid == 0)

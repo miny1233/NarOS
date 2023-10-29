@@ -24,7 +24,7 @@ typedef struct pcb_t
 
 typedef pcb_t task_t;   //task_t 与 pcb_t 都是进程控制块
 
-extern task_t *running; //正在运行的程序
+extern volatile task_t *running; //正在运行的程序
 
 // 中断帧
 typedef struct {
@@ -43,7 +43,7 @@ typedef struct {
     u32 eflags;
 }__attribute__((packed)) interrupt_stack_frame;
 
-void schedule(task_t* this,task_t* next); // 定义在schedule.s中
+void schedule(volatile task_t* this,volatile task_t* next); // 定义在schedule.s中
 
 void task_init();
 
