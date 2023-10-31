@@ -1,18 +1,27 @@
 .global interrupt_debug
 .global interrupt_hardler_list
-.global interrupt_handler_0x20
+.global interrupt_handler_ret_0x20
 
 .text
 .macro INTERRUPT_HANDLER vector,sys
 interrupt_handler_\vector:
+ push %ds
+ push %es
+ push %fs
+ push %gs
  pusha
  push $\vector        # 传递中断号
  mov $\vector,%ebx
  shl $2,%ebx
  mov interrupt_hardler_list(%ebx),%eax
  call *%eax
+interrupt_handler_ret_\vector:
  pop %eax  #维护栈平衡而已 没有特殊意义 (+19)
  popa
+ pop %gs
+ pop %fs
+ pop %es
+ pop %ds
  iret
 .endm
 

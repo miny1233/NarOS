@@ -12,6 +12,8 @@ size_t process_num = 0; // 运行任务数
 task_t *task_list;  // 任务列表 所有任务在这里统一管理
 pid_t pid_total = 0;
 
+extern void interrupt_handler_ret_0x20();  //时钟中断返回地址
+
 static void clock_int(int vector)
 {
     assert(vector == 0x20);
@@ -22,6 +24,7 @@ static void clock_int(int vector)
         running = running->next;
     if(process_num > 1 && running->pid == 0)
         goto next_task;
+    //if(back_task->pid == running->pid)return;
     schedule(back_task, running);
 }
 
@@ -50,13 +53,13 @@ void task_init()
 
 }
 // 初始化中断栈
-static void stack_init(interrupt_stack_frame* stack,void* entry)
+static void stack_init(void* entry,void* stack_top)
 {
-    extern void interrupt_handler_0x20();  //时钟中断
-    stack->ret = (u32)interrupt_handler_0x20 + 19;  //需要使用取地址符号 外部声明是u32函数会被当作变量
+    interrupt_stack_frame* stack = stack_top - sizeof(interrupt_stack_frame);
+    stack->ret = (u32)interrupt_handler_ret_0x20;  //需要使用取地址符号 外部声明是u32函数会被当作变量
     stack->vector = 0x20;
-    stack->ebp = (u32)stack + sizeof(interrupt_stack_frame);
-    stack->esp = stack->ebp;
+    stack->ebp = (u32)stack_top;
+    stack->esp = (u32)&stack->eip;    //这个值的设置似乎并没有什么用
     stack->eip = (u32)entry;
     stack->cs = KERNEL_CODE_SELECTOR;
     stack->eflags=582;
@@ -67,14 +70,8 @@ task_t* task_create(void *entry) {
     assert(process_num <= MAX_TASK_NUM); // 任务是否超过最大限度
     set_interrupt_state(0); // 保证原子操作 否则可能会调度出错
     // 为新任务设置内存
-    void* start_mem = get_page();   //申请一页内存 4k
-    //对于end_mem的操作可能有人会问这不内存越界了
-    //实际上intel处理器的入栈操作是放入内存[esp - size]
-    //而并非先push再减小esp
-    //这种设计是好的，只需要esp的地址是对齐的，那么就不可能内存不对齐
-    void* end_mem = start_mem + PAGE_SIZE;  // 最后一个地址 + 1
-    void* stack_mem = end_mem - sizeof(interrupt_stack_frame);// 内存对齐
-    stack_init(stack_mem,entry);
+    void* stack_top = get_page() + PAGE_SIZE;  // 栈顶
+    stack_init(entry,stack_top);
     for(u32 task_idx=1;task_idx < MAX_TASK_NUM;task_idx++)
     {
         if(task_list[task_idx].pid == 0)    //无任务
@@ -82,9 +79,9 @@ task_t* task_create(void *entry) {
             // 设置进程信息
             task_list[task_idx].pid = ++pid_total;
             task_list[task_idx].next = running->next;
-            task_list[task_idx].esp = (u32)&(((interrupt_stack_frame*)stack_mem)->ret);
-            task_list[task_idx].ebp = (u32)stack_mem + sizeof(interrupt_stack_frame);
-             task_list[task_idx].cr3 = get_cr3();    //与主进程共享cr3 （之后会改）
+            task_list[task_idx].esp = (u32)stack_top - sizeof(interrupt_stack_frame);
+            task_list[task_idx].ebp = (u32)stack_top;
+            task_list[task_idx].cr3 = get_cr3();    //与主进程共享cr3
             running->next = &task_list[task_idx];
             process_num++;  //运行任务数+1
 
@@ -113,6 +110,53 @@ void task_exit()
     //任务被移除，需要强制切换来更新
     yield();
 }
+
+pid_t create_user_mode_task(void* entry)
+{
+    set_interrupt_state(0); // 保证原子操作 否则可能会调度出错
+    assert(process_num <= MAX_TASK_NUM); // 任务是否超过最大限度
+    // 为新任务设置内存
+    void* stack_top = get_page() + PAGE_SIZE;  // 栈顶
+    // ROP技术
+    interrupt_stack_frame* stack = stack_top - sizeof(interrupt_stack_frame);
+    stack->ret = (u32)interrupt_handler_ret_0x20;  //需要使用取地址符号 外部声明是u32函数会被当作变量
+    stack->vector = 0x20;
+    stack->ebp = (u32)stack_top;
+    stack->esp = (u32)&stack->eip;    //这个值的设置似乎并没有什么用
+    stack->eip = (u32)entry;
+
+    //设置段寄存器
+    stack->cs = USER_CODE_SELECTOR;
+    stack->gs = 0;
+    stack->ds = USER_DATA_SELECTOR;
+    stack->es = USER_DATA_SELECTOR;
+    stack->fs = USER_DATA_SELECTOR;
+    stack->ss = USER_DATA_SELECTOR;
+    stack->cs = USER_CODE_SELECTOR;
+
+    stack->eflags=(0 << 12 | 0b10 | 1 << 9);
+
+    u32 task_idx;
+    //寻找空的pcb位置
+    for(task_idx = 1;task_idx < MAX_TASK_NUM;task_idx++)
+        if(task_list[task_idx].pid == 0)break;    //无任务
+
+    // 设置进程信息
+    task_list[task_idx].pid = ++pid_total;
+    task_list[task_idx].next = running->next;
+    task_list[task_idx].esp = (u32)stack_top - sizeof(interrupt_stack_frame);
+    task_list[task_idx].ebp = (u32)stack_top;
+    //现在是测试，应该复制页表
+    task_list[task_idx].cr3 = get_cr3();
+
+    running->next = &task_list[task_idx];
+    process_num++;  //运行任务数+1
+
+    set_interrupt_state(1); //  任务创建完毕
+    return task_list[task_idx].pid;
+}
+
+
 // fork()系统调用
 void sys_fork()
 {

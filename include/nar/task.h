@@ -38,9 +38,14 @@ typedef struct {
     u32 edx;
     u32 ecx;
     u32 eax;
+    u32 gs;
+    u32 fs;
+    u32 es;
+    u32 ds;
     u32 eip;
     u32 cs;
     u32 eflags;
+    u32 ss;
 }__attribute__((packed)) interrupt_stack_frame;
 
 void schedule(volatile task_t* this,volatile task_t* next); // 定义在schedule.s中
@@ -48,6 +53,8 @@ void schedule(volatile task_t* this,volatile task_t* next); // 定义在schedule
 void task_init();
 
 task_t* task_create(void *entry);
+
+pid_t create_user_mode_task(void* entry);
 
 void task_exit();
 

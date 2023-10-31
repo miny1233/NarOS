@@ -33,8 +33,9 @@ int init(unsigned long magic, multiboot_info_t* _info)
     // 外围设备
     interrupt_hardler_register(0x21,keyboard_handler);
     set_interrupt_mask(1,1); //启动键盘中断
-    
+
     task_create(child);
+    //create_user_mode_task(child);
 
     int stack_val;
     printk("stack_start: %x\n",&stack_val);
@@ -44,5 +45,6 @@ int init(unsigned long magic, multiboot_info_t* _info)
 
 void child()
 {
-   //task_exit();
+    printk("i am child!\n");
+    task_exit();
 }

@@ -113,7 +113,7 @@ void memory_init()
     LOG("can use mem base 0x%X size: 0x%X\n",memory_base,memory_size);
     for(size_t index=0;index < total_page;index++)
         page_map[index] = 0; //设置为全0
-    mapping_init();
+    //mapping_init();
 }
 
 void* get_page()
