@@ -46,7 +46,7 @@ all:
 	hdiutil mount $(BUILD)/nar.img
 	cp  $(BUILD)/nar /Volumes/NAR
 	hdiutil unmount /Volumes/NAR
-	cp $(BUILD)/nar.img $(BUILD)/nar.os
+	cp $(BUILD)/nar.img $(BUILD)/nar.os	# nar.os 绕过释放不了的锁
 .PHONY:all
 
 build:

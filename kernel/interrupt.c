@@ -4,30 +4,13 @@
 #include <device/io.h>
 #include <nar/panic.h>
 #include <type.h>
+#include <nar/task.h>
 
 #define PIC_M_CTRL 0x20 // 主片的控制端口
 #define PIC_M_DATA 0x21 // 主片的数据端口
 #define PIC_S_CTRL 0xa0 // 从片的控制端口
 #define PIC_S_DATA 0xa1 // 从片的数据端口
 #define PIC_EOI 0x20    // 通知中断控制器中断结束
-
-typedef struct gate_t
-{
-    u16 offset0;    // 段内偏移 0 ~ 15 位
-    u16 selector;   // 代码段选择子
-    u8 reserved;    // 保留不用
-    u8 type : 4;    // 任务门/中断门/陷阱门
-    u8 segment : 1; // segment = 0 表示系统段
-    u8 DPL : 2;     // 使用 int 指令访问的最低权限
-    u8 present : 1; // 是否有效
-    u16 offset1;    // 段内偏移 16 ~ 31 位
-}__attribute__((packed)) gate_t;
-
-typedef struct pointer_t
-{
-    unsigned short limit; // size - 1
-    unsigned int base;
-}__attribute__((packed)) pointer_t;
 
 // 各种错误信息
 static char *messages[] = {
@@ -55,6 +38,7 @@ static char *messages[] = {
         "#CP Control Protection Exception\0",
 };
 
+//错误追踪
 _Noreturn static void exception_handler(
         int vector,
         u32 edi, u32 esi, u32 ebp, u32 esp,
@@ -71,8 +55,8 @@ _Noreturn static void exception_handler(
     {
         message = messages[15];
     }
-
-    printk("\nEXCEPTION : %s \n", message);
+    printk("      PID : %d\n",running->pid);
+    printk("EXCEPTION : %s \n", message);
     printk("   VECTOR : 0x%02X\n", vector);
     printk("    ERROR : 0x%08X\n", error);
     printk("   EFLAGS : 0x%08X\n", eflags);

@@ -28,19 +28,21 @@ int init(unsigned long magic, multiboot_info_t* _info)
     interrupt_init();   // 中断处理
     memory_init();      // 内存管理
     task_init();        // 任务调度
-    //vfs_init();          // 文件系统初始化
+    //vfs_init();       // 文件系统初始化
     //pipe_init();
     // 外围设备
     interrupt_hardler_register(0x21,keyboard_handler);
     set_interrupt_mask(1,1); //启动键盘中断
     
     task_create(child);
-    //while(1)printk("cr3 = %d\n",running->cr3);
+
+    int stack_val;
+    printk("stack_start: %x\n",&stack_val);
 
     return 0; //初始化完毕，初始化程序变idle程序
 }
 
 void child()
 {
-   while(1);
+   //task_exit();
 }

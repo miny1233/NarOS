@@ -6,7 +6,6 @@
 #include <nar/mem.h>
 #include <memory.h>
 #include <nar/panic.h>
-#include <nar/debug.h>
 
 volatile task_t *running;        // 当前运行的任务
 size_t process_num = 0; // 运行任务数
@@ -35,7 +34,7 @@ void task_init()
     // 手动加载进程 0
     task_list[0].pid = 0;
     task_list[0].next = &task_list[0];  // 循环链表 自己指向自己
-    process_num=1;  // 似乎出现了问题，process默认不为0
+    process_num++;  // 似乎出现了问题，process默认不为0
     running = &task_list[0];
 
     // 配置时钟中断
@@ -62,7 +61,8 @@ static void stack_init(interrupt_stack_frame* stack,void* entry)
     stack->cs = KERNEL_CODE_SELECTOR;
     stack->eflags=582;
 }
-// 创建任务 需要提供程序入口
+
+// 创建内核任务 需要提供程序入口
 task_t* task_create(void *entry) {
     assert(process_num <= MAX_TASK_NUM); // 任务是否超过最大限度
     set_interrupt_state(0); // 保证原子操作 否则可能会调度出错
@@ -84,7 +84,7 @@ task_t* task_create(void *entry) {
             task_list[task_idx].next = running->next;
             task_list[task_idx].esp = (u32)&(((interrupt_stack_frame*)stack_mem)->ret);
             task_list[task_idx].ebp = (u32)stack_mem + sizeof(interrupt_stack_frame);
-            task_list[task_idx].cr3 = get_cr3();    //与主进程共享cr3 （之后会改）
+             task_list[task_idx].cr3 = get_cr3();    //与主进程共享cr3 （之后会改）
             running->next = &task_list[task_idx];
             process_num++;  //运行任务数+1
 
@@ -93,7 +93,9 @@ task_t* task_create(void *entry) {
         }
     }
     panic("Have Some Error in Task Create"); // 这个地方理论上不会发生 如果发生那么就是未知错误
+    return 0;
 }
+
 //还需要有释放内存的功能
 void task_exit()
 {
@@ -111,3 +113,9 @@ void task_exit()
     //任务被移除，需要强制切换来更新
     yield();
 }
+// fork()系统调用
+void sys_fork()
+{
+
+}
+
