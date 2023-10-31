@@ -10,13 +10,17 @@ interrupt_handler_\vector:
  push %fs
  push %gs
  pusha
+.if \sys == 0
+ pushl $1233
+.endif
  push $\vector        # 传递中断号
  mov $\vector,%ebx
  shl $2,%ebx
  mov interrupt_hardler_list(%ebx),%eax
  call *%eax
 interrupt_handler_ret_\vector:
- pop %eax  #维护栈平衡而已 没有特殊意义 (+19)
+ pop %eax  #维护栈平衡 弹出 vector 和 error
+ pop %eax
  popa
  pop %gs
  pop %fs

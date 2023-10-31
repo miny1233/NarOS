@@ -22,8 +22,7 @@ static void clock_int(int vector)
     volatile task_t *back_task = running;
     next_task:
         running = running->next;
-    if(process_num > 1 && running->pid == 0)
-        goto next_task;
+    if(process_num > 1 && running->pid == 0)goto next_task;
     //if(back_task->pid == running->pid)return;
     schedule(back_task, running);
 }
@@ -59,7 +58,7 @@ static void stack_init(void* entry,void* stack_top)
     stack->ret = (u32)interrupt_handler_ret_0x20;  //需要使用取地址符号 外部声明是u32函数会被当作变量
     stack->vector = 0x20;
     stack->ebp = (u32)stack_top;
-    stack->esp = (u32)&stack->eip;    //这个值的设置似乎并没有什么用
+    stack->esp = (u32)&stack->eip;    //IA32中此值被忽略
     stack->eip = (u32)entry;
     stack->cs = KERNEL_CODE_SELECTOR;
     stack->eflags=582;
@@ -122,7 +121,7 @@ pid_t create_user_mode_task(void* entry)
     stack->ret = (u32)interrupt_handler_ret_0x20;  //需要使用取地址符号 外部声明是u32函数会被当作变量
     stack->vector = 0x20;
     stack->ebp = (u32)stack_top;
-    stack->esp = (u32)&stack->eip;    //这个值的设置似乎并没有什么用
+    stack->esp = 0;    //IA32 popa忽略这个值
     stack->eip = (u32)entry;
 
     //设置段寄存器
@@ -131,9 +130,11 @@ pid_t create_user_mode_task(void* entry)
     stack->ds = USER_DATA_SELECTOR;
     stack->es = USER_DATA_SELECTOR;
     stack->fs = USER_DATA_SELECTOR;
-    stack->ss = USER_DATA_SELECTOR;
-    stack->cs = USER_CODE_SELECTOR;
 
+    stack->ss3 = USER_DATA_SELECTOR;
+    stack->esp3 = (u32)stack_top;
+
+    //stack->eflags=582;
     stack->eflags=(0 << 12 | 0b10 | 1 << 9);
 
     u32 task_idx;
@@ -147,7 +148,7 @@ pid_t create_user_mode_task(void* entry)
     task_list[task_idx].esp = (u32)stack_top - sizeof(interrupt_stack_frame);
     task_list[task_idx].ebp = (u32)stack_top;
     //现在是测试，应该复制页表
-    task_list[task_idx].cr3 = get_cr3();
+    //task_list[task_idx].cr3 = get_cr3();
 
     running->next = &task_list[task_idx];
     process_num++;  //运行任务数+1

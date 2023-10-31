@@ -30,10 +30,11 @@ extern volatile task_t *running; //正在运行的程序
 typedef struct {
     u32 ret;
     u32 vector;
+    u32 error;
     u32 edi;
     u32 esi;
     u32 ebp;
-    u32 esp;
+    u32 esp;    //这个值在pusha时被保存 但是popa会忽略
     u32 ebx;
     u32 edx;
     u32 ecx;
@@ -45,7 +46,8 @@ typedef struct {
     u32 eip;
     u32 cs;
     u32 eflags;
-    u32 ss;
+    u32 esp3;
+    u32 ss3;
 }__attribute__((packed)) interrupt_stack_frame;
 
 void schedule(volatile task_t* this,volatile task_t* next); // 定义在schedule.s中
