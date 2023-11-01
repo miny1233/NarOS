@@ -36,6 +36,8 @@ int init(unsigned long magic, multiboot_info_t* _info)
 
     //task_create(child);
     create_user_mode_task(child);
+    create_user_mode_task(child);
+    create_user_mode_task(child);
 
     int stack_val;
     printk("stack_start: %x\n",&stack_val);

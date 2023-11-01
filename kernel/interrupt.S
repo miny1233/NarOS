@@ -11,7 +11,7 @@ interrupt_handler_\vector:
  push %gs
  pusha
 .if \sys == 0
- pushl $1233
+ pushl $1233    # magic
 .endif
  push $\vector        # 传递中断号
  mov $\vector,%ebx

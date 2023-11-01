@@ -11,6 +11,8 @@ volatile task_t *running;        // 当前运行的任务
 size_t process_num = 0; // 运行任务数
 task_t *task_list;  // 任务列表 所有任务在这里统一管理
 pid_t pid_total = 0;
+extern tss_t tss;
+char ring0[4096];// 用户态陷入内核态 临时堆栈
 
 extern void interrupt_handler_ret_0x20();  //时钟中断返回地址
 
@@ -23,7 +25,8 @@ static void clock_int(int vector)
     next_task:
         running = running->next;
     if(process_num > 1 && running->pid == 0)goto next_task;
-    //if(back_task->pid == running->pid)return;
+    // 如果中断涉及DPL改变 会使用ss0 esp0替换
+    if(running->pid != 0)tss.esp0 = (u32)&ring0[4096];
     schedule(back_task, running);
 }
 
