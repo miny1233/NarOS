@@ -13,11 +13,10 @@ interrupt_handler_\vector:
 .if \sys == 0
  pushl $1233    # 不是错误则压入magic
 .endif
- push $\vector        # 传递中断号
+ pushl $\vector        # 传递中断号
  movl $\vector,%ebx
  shll $2,%ebx
- movl interrupt_hardler_list(%ebx),%eax
- call *%eax
+ call *interrupt_hardler_list(%ebx)
 interrupt_handler_ret_\vector:
  add $8,%esp  #维护栈平衡 弹出 vector 和 error
  popa
