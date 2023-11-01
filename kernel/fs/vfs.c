@@ -16,22 +16,6 @@
 dev_t root_dev; //根设备
 inode_t *root_inode;//根节点
 
-static int root_dev_read(struct dev_t *dev, void *buf, size_t seek, size_t size)
-{
-    if (dev->dev_id != 0)
-        return -1;
-    ata_disk_read(seek,buf,(u8)size);
-    return 0;
-}
-
-static int root_dev_write(dev_t* dev,void *data,size_t seek,size_t size)
-{
-    if (dev->dev_id != 0)
-        return -1;
-    ata_disk_write(seek,data,(u8)size);
-    return 0;
-}
-
 fs_t filesystem_list[FS_LIST_SIZE];
 char registered_fs[FS_LIST_SIZE];
 
@@ -63,12 +47,6 @@ void vfs_init()
             }
         }
     }
-
-    //制作一个根设备
-    root_dev.dev_id = 0;
-    root_dev.dev_type = DEV_DISK;
-    root_dev.read = root_dev_read;
-    root_dev.write = root_dev_write;
 
     if(!registered_fs[0])panic("Cannot Find Root FileSystem");
 

@@ -7,4 +7,5 @@
 
 void ata_disk_read(u32 sector,void* buf,u8 count);
 void ata_disk_write(u32 sector,const void* buf,u8 count);
+
 #endif //NAROS_ATA_H
