@@ -19,7 +19,8 @@ typedef struct pcb_t
     struct pcb_t* next;    // 下一个任务
     pid_t pid;
     //打开的文件
-    inode_t files[32];
+    inode_t files[31];
+    u8 dpl; // 特权级
 } pcb_t;
 
 typedef pcb_t task_t;   //task_t 与 pcb_t 都是进程控制块

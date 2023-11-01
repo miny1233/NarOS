@@ -33,7 +33,7 @@ void schedule()
     if(process_num > 1 && running->pid == 0)goto next_task;
 
     // 如果中断涉及DPL改变 会使用ss0 esp0替换
-    if(running->pid != 0)tss.esp0 = (u32)&ring0[4096];
+    if(running->dpl != 0)tss.esp0 = (u32)&ring0[4096];
 
     // 是否需要切换页目录
     if(get_cr3() != running->cr3)
@@ -97,6 +97,7 @@ task_t* task_create(void *entry) {
             task_list[task_idx].esp = (u32)stack_top - sizeof(interrupt_stack_frame);
             task_list[task_idx].ebp = (u32)stack_top;
             task_list[task_idx].cr3 = get_cr3();    //与主进程共享cr3
+            task_list[task_idx].dpl = 0;    // 内核态
             running->next = &task_list[task_idx];
             process_num++;  //运行任务数+1
 
@@ -165,6 +166,7 @@ pid_t create_user_mode_task(void* entry)
     task_list[task_idx].ebp = (u32)stack_top;
     //现在是测试，应该复制页表
     task_list[task_idx].cr3 = get_cr3();
+    task_list[task_idx].dpl = 3;    //用户态
 
     running->next = &task_list[task_idx];
     process_num++;  //运行任务数+1
