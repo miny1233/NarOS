@@ -1,8 +1,8 @@
-.global schedule
+.global context_switch
 
 
-# 无堆栈函数
-schedule:
+# 切换上下文
+context_switch:
     movl 4(%esp),%eax   # 当前任务task_t
     movl %ebp,(%eax)    # 保存当前堆栈
     movl %esp,4(%eax)

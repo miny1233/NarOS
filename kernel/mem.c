@@ -39,7 +39,7 @@ page_entry_t* page_table;  // 页目录
 u32 get_cr3(){
     asm volatile("movl %cr3,%eax\n");
 }
-static void set_cr3(u32 pde){
+void set_cr3(u32 pde){
     asm volatile("movl %%eax,%%cr3\n"::"a"(pde));
 }
 static void enable_page()   // 启用分页
@@ -113,7 +113,7 @@ void memory_init()
     LOG("can use mem base 0x%X size: 0x%X\n",memory_base,memory_size);
     for(size_t index=0;index < total_page;index++)
         page_map[index] = 0; //设置为全0
-    //mapping_init();
+    mapping_init();
 }
 
 void* get_page()

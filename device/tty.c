@@ -12,7 +12,7 @@
 u32 high;
 u32 width;
 
-static inline void syc_cursor()
+static inline void sync_cursor()
 {
     u16 pos = high * 80 + width;
     outb(CRT_ADDR_LINE,CRT_CURSOR_L);
@@ -20,7 +20,7 @@ static inline void syc_cursor()
     outb(CRT_ADDR_LINE,CRT_CURSOR_H);
     outb(CRT_DATA_LINE,pos>>8);
 }
-char empty_video[80*2*25];
+char empty_video[80 * 2 * 25];
 
 void tty_init(){
     high=0;
@@ -28,7 +28,7 @@ void tty_init(){
     u32 v_size = 0;
     char *flag = (void*)Videos_Mem_Start + 1;
     char *cursor = (void*)Videos_Mem_Start;
-    while(v_size++<80*25)
+    while(v_size++ < 80 * 25)
     {
         *cursor=0;
         //*flag=0x30;
@@ -85,12 +85,12 @@ void tty_write(const char* str){
         }
         for(int i=0;i<80;i++)screen[24][i].ch = ' ';
     }
-    syc_cursor();
+    sync_cursor();
    }
 }
 void tty_clear(){
     high=0;
     width=0;
-    syc_cursor();
+    sync_cursor();
     memcpy((void *)Videos_Mem_Start,empty_video,sizeof (empty_video));
 }

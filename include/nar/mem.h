@@ -14,5 +14,6 @@ void* get_page();
 void put_page(void* addr);
 
 u32 get_cr3();
+void set_cr3(u32 pde);
 
 #endif //NAROS_MEM_H

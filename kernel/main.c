@@ -36,8 +36,6 @@ int init(unsigned long magic, multiboot_info_t* _info)
 
     //task_create(child);
     create_user_mode_task(child);
-    create_user_mode_task(child);
-    create_user_mode_task(child);
 
     int stack_val;
     printk("stack_start: %x\n",&stack_val);
@@ -47,9 +45,9 @@ int init(unsigned long magic, multiboot_info_t* _info)
 
 void child()
 {
-    //asm ("int $0x20");
-    int i = 0;
     while(1);
-    printk("%d i am child!\n",i++);
+    int i = 0;
+    while(1)
+        printk("%d i am child!\n",i++); // 用户态不能使用printk
     //task_exit();
 }

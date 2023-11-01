@@ -50,7 +50,9 @@ typedef struct {
     u32 ss3;
 }__attribute__((packed)) interrupt_stack_frame;
 
-void schedule(volatile task_t* this,volatile task_t* next); // 定义在schedule.s中
+void context_switch(volatile task_t* this,volatile task_t* next); // 定义在schedule.s中
+
+void schedule();
 
 void task_init();
 

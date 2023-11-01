@@ -11,16 +11,15 @@ interrupt_handler_\vector:
  push %gs
  pusha
 .if \sys == 0
- pushl $1233    # magic
+ pushl $1233    # 不是错误则压入magic
 .endif
  push $\vector        # 传递中断号
- mov $\vector,%ebx
- shl $2,%ebx
- mov interrupt_hardler_list(%ebx),%eax
+ movl $\vector,%ebx
+ shll $2,%ebx
+ movl interrupt_hardler_list(%ebx),%eax
  call *%eax
 interrupt_handler_ret_\vector:
- pop %eax  #维护栈平衡 弹出 vector 和 error
- pop %eax
+ add $8,%esp  #维护栈平衡 弹出 vector 和 error
  popa
  pop %gs
  pop %fs
@@ -37,6 +36,11 @@ default_int_hardler:
  pop %eax
  popa
  iret
+
+# 系统调用中断
+.global syscall_handler
+syscall_handler:
+
 
 INTERRUPT_HANDLER 0x00, 0#  divide by zero
 INTERRUPT_HANDLER 0x01, 0#  debug

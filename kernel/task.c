@@ -21,14 +21,27 @@ static void clock_int(int vector)
     assert(vector == 0x20);
     send_eoi(vector);
 
+    schedule();
+}
+
+void schedule()
+{
+    //寻找下一个任务
     volatile task_t *back_task = running;
     next_task:
-        running = running->next;
+    running = running->next;
     if(process_num > 1 && running->pid == 0)goto next_task;
+
     // 如果中断涉及DPL改变 会使用ss0 esp0替换
     if(running->pid != 0)tss.esp0 = (u32)&ring0[4096];
-    schedule(back_task, running);
+
+    // 是否需要切换页目录
+    if(get_cr3() != running->cr3)
+        set_cr3(running->cr3);
+
+    context_switch(back_task, running);
 }
+
 
 // 以下是初始化过程
 void task_init()
@@ -151,7 +164,7 @@ pid_t create_user_mode_task(void* entry)
     task_list[task_idx].esp = (u32)stack_top - sizeof(interrupt_stack_frame);
     task_list[task_idx].ebp = (u32)stack_top;
     //现在是测试，应该复制页表
-    //task_list[task_idx].cr3 = get_cr3();
+    task_list[task_idx].cr3 = get_cr3();
 
     running->next = &task_list[task_idx];
     process_num++;  //运行任务数+1

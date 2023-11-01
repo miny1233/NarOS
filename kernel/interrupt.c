@@ -5,6 +5,7 @@
 #include <nar/panic.h>
 #include <type.h>
 #include <nar/task.h>
+#include <nar/syscall.h>
 
 #define PIC_M_CTRL 0x20 // 主片的控制端口
 #define PIC_M_DATA 0x21 // 主片的数据端口
@@ -55,6 +56,7 @@ static void exception_handler(
     {
         message = messages[15];
     }
+    printk("\n");
     printk("      PID : %d\n",running->pid);
     printk("EXCEPTION : %s \n", message);
     printk("   VECTOR : 0x%02X\n", vector);
@@ -91,10 +93,10 @@ static void pic_init()
     outb(PIC_S_DATA, 0b11111111); // 关闭所有中断
 }
 
-extern void interrupt_process(); 
+extern void interrupt_process();
 extern void default_int_hardler();
-
 extern u32 handler_entry_table[];
+extern void syscall_handler();//系统调用中断处理
 
 void interrupt_init()
 {
@@ -124,6 +126,17 @@ void interrupt_init()
     //注册默认的错误的处理
     for(size_t interrupt_num = 0;interrupt_num < 0x20;interrupt_num++)
         interrupt_hardler_register(interrupt_num,exception_handler);
+
+    // 初始化系统调用
+    gate_t *gate = &idt[0x80];
+    gate->offset0 = (u32)syscall_handler & 0xffff;
+    gate->offset1 = ((u32)syscall_handler >> 16) & 0xffff;
+    gate->selector = 1 << 3; // 代码段
+    gate->reserved = 0;      // 保留不用
+    gate->type = 0b1110;     // 中断门
+    gate->segment = 0;       // 系统段
+    gate->DPL = 3;           // 用户态
+    gate->present = 1;       // 有效
 
     idt_48.base = (u32)idt;
     idt_48.limit = sizeof(idt)-1; 
