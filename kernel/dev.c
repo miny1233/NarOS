@@ -1,75 +1,121 @@
 #include <device/dev.h>
-#include <memory.h>
-#include "nar/printk.h"
-#include "nar/panic.h"
-#include "device/ata.h"
+#include <nar/panic.h>
+#include <nar/task.h>
+#include "string.h"
 
-dev_t dev_list[DEV_NR];
-char dev_map[DEV_NR];
-int dev_num = 0; //设备数
+device_t device_list[DEV_NR];
 
-// 根磁盘注册
-static int disk0_drive_read(int id,u32 sector,void* buf,u8 count)
+device_t *device_get(dev_t dev)
 {
-    assert(id == 0); //主盘一定注册在0上
-    ata_disk_read(sector,buf,count);
-    return 1;
+    assert(dev < DEV_NR);
+    device_t *device = &device_list[dev];
+    assert(device->type != DEV_NULL);
+    return device;
 }
 
-static int disk0_drive_write(int id,u32 sector,const void* buf,u8 count)
+device_t *device_find(int subtype, idx_t idx)
 {
-    assert(id == 0); //主盘一定注册在0上
-    ata_disk_write(sector,buf,count);
-    return 1;
-}
-static int root_dev_drive_init()
-{
-    struct disk_dev root_disk = {
-            .read = disk0_drive_read,
-            .write = disk0_drive_write
-    };
-    dev_t root_dev = {
-            .dev_type = DEV_DISK,
-            .disk_dev = root_disk,
-    };
-    return dev_register(root_dev);
+    idx_t nr = 0;
+    for (size_t i = 0; i < DEV_NR; i++)
+    {
+        device_t *device = &device_list[i];
+        if (nr == idx && device->subtype == subtype)
+            return device;
+        nr++;
+    }
+    return NULL;
 }
 
-void dev_manager_init()
+void device_init()
 {
-    // 设备树为空
-    memset(dev_map,0,sizeof dev_map);
+    for(dev_t idx = 0;idx < DEV_NR;idx++)
+    {
+        device_t *device = device_get(idx);
+        device->type = DEV_NULL;
+        device->subtype = DEV_NULL;
+        device->dev = idx;
+        device->ioctl = NULL;
+        device->read = NULL;
+        device->write = NULL;
+        device->this_device = device;
+    }
 
-    //调用驱动注册函数
-    assert(root_dev_drive_init() == 0);
+}
+static device_t* get_null_device()
+{
+    for(dev_t idx = 0;idx < DEV_NR ;idx++)
+    {
+        if (device_list[idx].type == DEV_NULL)
+            return &device_list[idx];
+    }
+    return NULL;
 }
 
-int dev_register(dev_t dev)
+dev_t device_install(int type, int subtype,char *name,
+                     void *ioctl, void *read, void *write)
 {
-   if (dev.dev_type > 2) // 支持的设备列表外
-   {
-       LOG("Unsupported Device!");
-       return -1;
-   }
-   if (dev_num == DEV_NR)
-   {
-       LOG("Maximum Device");
-       return -2;
-   }
-
-    int dev_id = 0;
-    for(;dev_id < DEV_NR;dev_id++)
-       if(dev_map[dev_id] == 0)break;
-
-    dev_map[dev_id] = 1;
-    dev_list[dev_id] = dev;
-    return dev_id;
-}
-// 获得设备控制块
-dev_t* get_dev_cb(int id)
-{
-    if(id < 0 || !dev_map[id])return 0;
-    return &dev_list[id];
+    device_t *device = get_null_device();
+    assert(device != NULL);
+    device->type = type;
+    device->subtype = subtype;
+    strcpy(device->name, name);
+    device->ioctl = ioctl;
+    device->read = read;
+    device->write = write;
+    return device->dev;
 }
 
+int device_ioctl(dev_t dev, int cmd, void *args, int flags)
+{
+    device_t *device = device_get(dev);
+    if (device->ioctl)
+    {
+        while(device->used) //设备被占用就先让出CPU时间片
+            schedule();
+        device->used = 1;
+
+        int ret = device->ioctl(device->this_device, cmd, args, flags);
+
+        device->used = 0;
+        return ret;
+    }
+    LOG("ioctl of device %d not implemented!!!\n", dev);
+    return -1;
+}
+
+int device_read(dev_t dev, void *buf, size_t count, idx_t idx, int flags)
+{
+    device_t *device = device_get(dev);
+    if (device->read)
+    {
+        while(device->used)
+            schedule();
+
+        device->used = 1;
+
+        int ret = device->read(device->this_device, buf, count, idx, flags);
+
+        device->used = 0;
+        return ret;
+    }
+    LOG("read of device %d not implemented!!!\n", dev);
+    return -1;
+}
+
+int device_write(dev_t dev, void *buf, size_t count, idx_t idx, int flags)
+{
+    device_t *device = device_get(dev);
+    if (device->write)
+    {
+        while(device->used)
+            schedule();
+        device->used = 1;
+
+       int ret = device->write(device->this_device, buf, count, idx, flags);
+       device->used = 0;
+       return ret;
+    }
+    LOG("write of device %d not implemented!!!\n", dev);
+    return -1;
+}
 

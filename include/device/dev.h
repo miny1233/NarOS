@@ -5,44 +5,57 @@
 #ifndef NAROS_DEV_H
 #define NAROS_DEV_H
 
-#define DEV_NR 32 //最大设备数
-
-#define DEV_GEN 0  // 默认设备
-#define DEV_CHAR 1  // 字符设备
-#define DEV_DISK 2 // 磁盘设备
-
 #include <type.h>
 
-// 设备管理器通过设备号通知驱动程序
-struct general_dev
+#define DEV_NR 32 //最大设备数
+
+#define DEV_NULL 0  // NULL设备
+#define DEV_CHAR 1  // 字符设备
+#define DEV_BLOCK 2 // 块设备
+
+// 设备子类型
+enum device_subtype_t
 {
-    int (*sendto)(int id,void* msg,int len);
-    int (*recv)(int id,void* msg);
+    DEV_CONSOLE = 1, // 控制台
+    DEV_KEYBOARD,    // 键盘
+    DEV_TTY,         // TTY 设备
+    DEV_IDE_DISK,    // IDE 磁盘
 };
 
-struct char_dev{
-    int (*sendto)(int id,char msg);
-    char (*recv)(int id);
-};
+// ioctl
+#define DEV_CMD_SECTOR_START  1 // 获得设备扇区开始位置 lba
+#define DEV_CMD_SECTOR_COUNT 2  // 获得设备扇区数量
+#define DEV_CMD_SECTOR_SIZE 3   // 获得设备扇区大小
 
-struct disk_dev{
-    int (*read)(int id,u32 sector,void* buf,u8 count);
-    int (*write)(int id,u32 sector,const void* buf,u8 count);
-};
+typedef int dev_t;
 
-// 设备描述
-typedef struct dev_t{
-    int dev_type; // 设备类型
-    union {
-        struct general_dev general_dev;
-        struct char_dev char_dev;
-        struct disk_dev disk_dev;
-    };
-}dev_t;
+typedef struct device_t
+{
+    char name[64];  // 设备名
+    int type;            // 设备类型 (给内核区分操作方法)
+    int subtype;         // 设备子类型 (相当于主设备号)
+    dev_t dev;           // 设备号
+    int used;            // 设备被占用
+    struct device_t *this_device;   // this指针 可参考C++成员函数的调用原理
+    // 设备控制
+    int (*ioctl)(void *dev, int cmd, void *args, int flags);
+    // 读设备
+    int (*read)(void *dev, void *buf, size_t count, idx_t idx, int flags);
+    // 写设备
+    int (*write)(void *dev, void *buf, size_t count, idx_t idx, int flags);
+} device_t;
+
+//安装设备
+void device_init();
+
+dev_t device_install(int type, int subtype,char *name,
+                     void *ioctl, void *read, void *write);
+
+//主设备号 与 从设备号
+device_t *device_find(int subtype, idx_t idx);
+
 
 
 // 初始化设备管理器
-void dev_manager_init();
-int dev_register(dev_t dev);
 
 #endif //NAROS_DEV_H

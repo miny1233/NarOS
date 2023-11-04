@@ -13,3 +13,5 @@ typedef unsigned char u8;
 typedef u16 uint16_t;
 typedef u32 uint32_t;
 typedef u64 uint64_t;
+
+typedef int idx_t;
