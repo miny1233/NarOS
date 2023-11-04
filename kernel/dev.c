@@ -1,4 +1,4 @@
-#include <device/dev.h>
+#include "nar/dev.h"
 #include <nar/panic.h>
 #include <nar/task.h>
 #include "string.h"
@@ -15,11 +15,13 @@ device_t *device_get(dev_t dev)
 
 device_t *device_find(int subtype, idx_t idx)
 {
-    idx_t nr = 0;
+    idx_t nr = 0;   // 从设备号
     for (size_t i = 0; i < DEV_NR; i++)
     {
         device_t *device = &device_list[i];
-        if (nr == idx && device->subtype == subtype)
+        if(device->subtype != subtype)
+            continue;
+        if (nr == idx)
             return device;
         nr++;
     }
@@ -30,7 +32,7 @@ void device_init()
 {
     for(dev_t idx = 0;idx < DEV_NR;idx++)
     {
-        device_t *device = device_get(idx);
+        device_t *device = &device_list[idx];
         device->type = DEV_NULL;
         device->subtype = DEV_NULL;
         device->dev = idx;

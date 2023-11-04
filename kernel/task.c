@@ -9,7 +9,7 @@
 
 volatile task_t *running;        // 当前运行的任务
 size_t process_num = 0; // 运行任务数
-task_t *task_list;  // 任务列表 所有任务在这里统一管理
+task_t task_list[128];  // 任务列表 所有任务在这里统一管理
 pid_t pid_total = 0;
 extern tss_t tss;
 char ring0[4096];// 用户态陷入内核态 临时堆栈
@@ -38,6 +38,7 @@ void schedule()
     // 是否需要切换页目录
     if(get_cr3() != running->cr3)
         set_cr3(running->cr3);
+    // 一般情况下页表是不会改变的 所以无需保存
 
     context_switch(back_task, running);
 }
@@ -47,11 +48,12 @@ void schedule()
 void task_init()
 {
     printk("[task]init now!\n");
-
-    task_list = get_page(); //为进程表分配内存
     // 手动加载进程 0
     task_list[0].pid = 0;
     task_list[0].next = &task_list[0];  // 循环链表 自己指向自己
+    task_list[0].cr3 = get_cr3();   // 页表不会自动保存
+    task_list[0].dpl = 0;
+
     process_num++;  // 似乎出现了问题，process默认不为0
     running = &task_list[0];
 

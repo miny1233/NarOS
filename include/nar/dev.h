@@ -5,7 +5,7 @@
 #ifndef NAROS_DEV_H
 #define NAROS_DEV_H
 
-#include <type.h>
+#include "../type.h"
 
 #define DEV_NR 32 //最大设备数
 
@@ -16,8 +16,7 @@
 // 设备子类型
 enum device_subtype_t
 {
-    DEV_CONSOLE = 1, // 控制台
-    DEV_KEYBOARD,    // 键盘
+    DEV_KEYBOARD = 1,    // 键盘
     DEV_TTY,         // TTY 设备
     DEV_IDE_DISK,    // IDE 磁盘
 };
@@ -53,6 +52,10 @@ dev_t device_install(int type, int subtype,char *name,
 
 //主设备号 与 从设备号
 device_t *device_find(int subtype, idx_t idx);
+
+int device_ioctl(dev_t dev, int cmd, void *args, int flags);
+int device_read(dev_t dev, void *buf, size_t count, idx_t idx, int flags);
+int device_write(dev_t dev, void *buf, size_t count, idx_t idx, int flags);
 
 
 

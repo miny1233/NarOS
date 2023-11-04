@@ -3,7 +3,7 @@
 #include <device/io.h>
 #include <nar/task.h>
 #include <nar/panic.h>
-#include <device/dev.h>
+#include "nar/dev.h"
 
 #define DISKREAD 0
 #define DISKWRITE 1

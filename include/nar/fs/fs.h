@@ -7,7 +7,7 @@
 #ifndef NAROS_FS_H
 #define NAROS_FS_H
 
-#include <device/dev.h>
+#include "nar/dev.h"
 #include "inode.h"
 
 // fs由vfs来管理
