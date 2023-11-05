@@ -5,7 +5,6 @@
 #include <nar/fs/vfs.h>
 #include <nar/panic.h>
 #include <nar/printk.h>
-#include <nar/fs/inode.h>
 #include <nar/fs/fs.h>
 #include <device/ata.h>
 #include <type.h>
@@ -14,7 +13,7 @@
 #include <nar/task.h>
 
 dev_t root_dev; //根设备
-inode_t *root_inode;//根节点
+fs_t *root_fs;
 
 fs_t filesystem_list[FS_LIST_SIZE];
 char registered_fs[FS_LIST_SIZE];
@@ -47,15 +46,36 @@ void vfs_init()
             }
         }
     }
-
+    // 由于不支持链接文件 所以还不支持多文件系统
     if(!registered_fs[0])panic("Cannot Find Root FileSystem");
 
-    fs_t *root_fs = &filesystem_list[0];
-    root_inode = root_fs->get_super_inode();    //挂载根节点
+    root_fs = &filesystem_list[0];
+    root_fs->mount(root_fs, device_find(DEV_IDE_DISK,0)->dev); //挂载根设备
 }
+
+static int find_null_fd(volatile pcb_t* proc)
+{
+    for(int idx = 0;idx < FD_NR;idx++)
+        if(!proc->files[idx].usable)
+            return idx;
+    return -1;
+}
+
 
 //暂时不支持相对寻址
 int open(char* path)
 {
-    return -1;
+    int fd = find_null_fd(running);
+    volatile struct fd* f = &running->files[fd];
+
+    f->file = root_fs->open(path);
+    f->usable = f->file.f_type;
+
+    // 如果是设备则提前打开设备
+    if(f->file.f_type == F_DEV)
+    {
+        f->dev = device_find(f->file.data.dev.subtype,f->file.data.dev.idx)->dev;
+    }
+
+    return f->usable ? fd : -1;
 }

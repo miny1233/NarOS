@@ -2,9 +2,10 @@
 #define CLOCK_INT_HZ (1193182 / CLOCK_INT_COUNT_PER_SECOND)  // 最大 65535 否则越界
 
 #define MAX_TASK_NUM 128
+#define FD_NR 31
 
 #include <nar/globa.h>
-#include <nar/fs/inode.h>
+#include <nar/fs/fs.h>
 
 typedef u32 pid_t;
 
@@ -19,7 +20,7 @@ typedef struct pcb_t
     struct pcb_t* next;    // 下一个任务
     pid_t pid;
     //打开的文件
-    inode_t files[31];
+    struct fd files[FD_NR];
     u8 dpl; // 特权级
 } pcb_t;
 

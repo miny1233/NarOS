@@ -7,7 +7,7 @@ device_t device_list[DEV_NR];
 
 device_t *device_get(dev_t dev)
 {
-    assert(dev < DEV_NR);
+    assert(0 < dev && dev < DEV_NR);
     device_t *device = &device_list[dev];
     assert(device->type != DEV_NULL);
     return device;
@@ -46,7 +46,8 @@ void device_init()
 }
 static device_t* get_null_device()
 {
-    for(dev_t idx = 0;idx < DEV_NR ;idx++)
+    // 不存在0号设备 方便检查设备号的有效性
+    for(dev_t idx = 1;idx < DEV_NR ;idx++)
     {
         if (device_list[idx].type == DEV_NULL)
             return &device_list[idx];
