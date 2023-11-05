@@ -54,7 +54,7 @@ void task_init()
     task_list[0].cr3 = get_cr3();   // 页表不会自动保存
     task_list[0].dpl = 0;
 
-    process_num++;  // 似乎出现了问题，process默认不为0
+    process_num++;
     running = &task_list[0];
 
     // 配置时钟中断

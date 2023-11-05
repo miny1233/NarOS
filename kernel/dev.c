@@ -40,6 +40,7 @@ void device_init()
         device->read = NULL;
         device->write = NULL;
         device->this_device = device;
+        device->using = 0;
     }
 
 }
@@ -72,13 +73,13 @@ int device_ioctl(dev_t dev, int cmd, void *args, int flags)
     device_t *device = device_get(dev);
     if (device->ioctl)
     {
-        while(device->used) //设备被占用就先让出CPU时间片
+        while(device->using) //设备被占用就先让出CPU时间片
             schedule();
-        device->used = 1;
+        device->using = 1;
 
         int ret = device->ioctl(device->this_device, cmd, args, flags);
 
-        device->used = 0;
+        device->using = 0;
         return ret;
     }
     LOG("ioctl of device %d not implemented!!!\n", dev);
@@ -90,14 +91,14 @@ int device_read(dev_t dev, void *buf, size_t count, idx_t idx, int flags)
     device_t *device = device_get(dev);
     if (device->read)
     {
-        while(device->used)
+        while(device->using)
             schedule();
 
-        device->used = 1;
+        device->using = 1;
 
         int ret = device->read(device->this_device, buf, count, idx, flags);
 
-        device->used = 0;
+        device->using = 0;
         return ret;
     }
     LOG("read of device %d not implemented!!!\n", dev);
@@ -109,12 +110,12 @@ int device_write(dev_t dev, void *buf, size_t count, idx_t idx, int flags)
     device_t *device = device_get(dev);
     if (device->write)
     {
-        while(device->used)
+        while(device->using)
             schedule();
-        device->used = 1;
+        device->using = 1;
 
        int ret = device->write(device->this_device, buf, count, idx, flags);
-       device->used = 0;
+       device->using = 0;
        return ret;
     }
     LOG("write of device %d not implemented!!!\n", dev);

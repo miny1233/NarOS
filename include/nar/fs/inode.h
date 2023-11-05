@@ -9,34 +9,38 @@
 #ifndef NAROS_INODE_H
 #define NAROS_INODE_H
 
-//这里是目前支持的文件类型
-#define INODE_FILE 0  // 普通文件
-#define INODE_DIR 1   // 文件夹
-#define INODE_DEV 2   // 设备文件
-
-// inode由调用方管理
-// 即调用方会给出内存供存储
-// 除超级节点需要创建者管理
+// 元数据
 typedef struct inode {
-    char name[64];  // 名称
-    int type;       // 类型
     int iid;        // inode编号
-    char usable;    // 可用
-    // 删除元数据和文件
     int(*rm)(struct inode*);
-    //文件夹和文件的操作是不同的
-    union {
-        struct {
-            //文件读写
-            int(*read)(struct inode*,void* buf,int seek,int size);
-            int(*write)(struct inode*,void* buf,int seek,int size);
-        } file;
-        struct {
-            //获取文件夹的所有元数据
-            int (*get_inode)(struct inode *inode_list);
-        } dir;
-    };
-    void* sp;   //留给inode管理者使用
+    //读写
+    int (*lseek)();
+    int(*read)(struct inode*,void* buf,int size);
+    int(*write)(struct inode*,void* buf,int size);
 }inode_t;
+
+union file{
+        char name[64];  // 名称
+        u8 f_mod;
+    struct{
+        inode_t *inode; // 文件open后才有操作相关
+    } file;
+    struct
+    {
+        int subtype;    // 主设备号
+        int idx;        // 从设备号
+    } dev;
+
+};
+
+//这里是目前支持的文件类型
+#define FD_NULL 0  // 空文件
+#define FD_FILE 1  // 普通文件
+#define FD_DEV 2   // 设备文件
+
+struct fd{
+    int type;       // 类型
+    union file file;
+};
 
 #endif //NAROS_INODE_H

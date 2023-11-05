@@ -57,39 +57,5 @@ void vfs_init()
 //暂时不支持相对寻址
 int open(char* path)
 {
-    char* start = strsep(path);
-    if(start == NULL || !root_inode->usable)return -1;
-    inode_t inode_ls[128];  //一个文件夹下最多128个文件
-    inode_t* pwd = root_inode;
-    while(true)
-    {
-        start = strsep(start) + 1;
-        char* end = strsep(start);
-        for(char* ch = start;ch != end && *ch != 0;ch++)
-        {
-            if(pwd->usable && pwd->type == INODE_DIR)
-            {
-                memset(inode_ls,0,sizeof inode_ls);
-                pwd->dir.get_inode(inode_ls);
-                for(int index = 0;index < 128;index++)
-                {
-                    if(inode_ls[index].usable && !strcmp(inode_ls[index].name,start))
-                        pwd = &inode_ls[index];
-                }
-            }
-        }
-        if(end == NULL)break;
-    }
-    if(!strcmp(pwd->name,start))
-    {
-        int fd = 0;
-        for(;fd < 32;fd++) {
-            if (!running->files[fd].usable) {
-                running->files[fd] = *pwd;   // 拷贝元数据 到 进程控制块
-                break;
-            }
-        }
-        return fd < 32 ? fd : -1;   // 有可能出现打开文件过多的情况
-    }
     return -1;
 }

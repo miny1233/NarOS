@@ -26,15 +26,13 @@ enum device_subtype_t
 #define DEV_CMD_SECTOR_COUNT 2  // 获得设备扇区数量
 #define DEV_CMD_SECTOR_SIZE 3   // 获得设备扇区大小
 
-typedef int dev_t;
-
 typedef struct device_t
 {
     char name[64];  // 设备名
     int type;            // 设备类型 (给内核区分操作方法)
     int subtype;         // 设备子类型 (相当于主设备号)
     dev_t dev;           // 设备号
-    int used;            // 设备被占用
+    int using;            // 设备被占用
     struct device_t *this_device;   // this指针 可参考C++成员函数的调用原理
     // 设备控制
     int (*ioctl)(void *dev, int cmd, void *args, int flags);
@@ -44,9 +42,9 @@ typedef struct device_t
     int (*write)(void *dev, void *buf, size_t count, idx_t idx, int flags);
 } device_t;
 
-//安装设备
-void device_init();
 
+void device_init();
+//安装设备
 dev_t device_install(int type, int subtype,char *name,
                      void *ioctl, void *read, void *write);
 

@@ -15,3 +15,7 @@ typedef u32 uint32_t;
 typedef u64 uint64_t;
 
 typedef int idx_t;
+typedef int dev_t;
+
+#define likely(x)  __builtin_expect((x), 1)
+#define unlikely(x)  __builtin_expect((x), 0)
