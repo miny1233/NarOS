@@ -12,7 +12,6 @@ size_t process_num = 0; // 运行任务数
 task_t task_list[128];  // 任务列表 所有任务在这里统一管理
 pid_t pid_total = 0;
 extern tss_t tss;
-char ring0[4096];// 用户态陷入内核态 临时堆栈
 
 extern void interrupt_handler_ret_0x20();  //时钟中断返回地址
 
@@ -33,7 +32,7 @@ void schedule()
     if(process_num > 1 && running->pid == 0)goto next_task;
 
     // 如果中断涉及DPL改变 会使用ss0 esp0替换
-    if(running->dpl != 0)tss.esp0 = (u32)&ring0[4096];
+    if(running->dpl != 0)tss.esp0 = (u32)running->kernel_stack + PAGE_SIZE;
 
     // 是否需要切换页目录
     if(get_cr3() != running->cr3)
@@ -84,29 +83,41 @@ static void stack_init(void* entry,void* stack_top)
 
 // 创建内核任务 需要提供程序入口
 task_t* task_create(void *entry) {
-    assert(process_num <= MAX_TASK_NUM); // 任务是否超过最大限度
+    if(process_num > MAX_TASK_NUM)
+        goto fail;
+
     set_interrupt_state(0); // 保证原子操作 否则可能会调度出错
+
     // 为新任务设置内存
     void* stack_top = get_page() + PAGE_SIZE;  // 栈顶
     stack_init(entry,stack_top);
-    for(u32 task_idx=1;task_idx < MAX_TASK_NUM;task_idx++)
+
+    u32 task_idx;
+
+    for(task_idx=1;task_idx < MAX_TASK_NUM;task_idx++)
     {
         if(task_list[task_idx].pid == 0)    //无任务
-        {
-            // 设置进程信息
-            task_list[task_idx].pid = ++pid_total;
-            task_list[task_idx].next = running->next;
-            task_list[task_idx].esp = (u32)stack_top - sizeof(interrupt_stack_frame);
-            task_list[task_idx].ebp = (u32)stack_top;
-            task_list[task_idx].cr3 = get_cr3();    //与主进程共享cr3
-            task_list[task_idx].dpl = 0;    // 内核态
-            running->next = &task_list[task_idx];
-            process_num++;  //运行任务数+1
-
-            set_interrupt_state(1); //  任务创建完毕
-            return &task_list[task_idx];
-        }
+            goto create_task;
     }
+    goto fail;
+
+    create_task:
+    // 设置进程信息
+    task_list[task_idx].pid = ++pid_total;
+    task_list[task_idx].next = running->next;
+    task_list[task_idx].esp = (u32)stack_top - sizeof(interrupt_stack_frame);
+    task_list[task_idx].ebp = (u32)stack_top;
+    task_list[task_idx].cr3 = get_cr3();    //与主进程共享cr3
+    task_list[task_idx].dpl = 0;    // 内核态
+    task_list[task_idx].kernel_stack = get_page(); //陷入内核态时堆栈
+    running->next = &task_list[task_idx];
+    process_num++;  //运行任务数+1
+
+    set_interrupt_state(1); //  任务创建完毕
+    return &task_list[task_idx];
+
+
+    fail:
     panic("Have Some Error in Task Create"); // 这个地方理论上不会发生 如果发生那么就是未知错误
     return 0;
 }
@@ -132,7 +143,8 @@ void task_exit()
 pid_t create_user_mode_task(void* entry)
 {
     set_interrupt_state(0); // 保证原子操作 否则可能会调度出错
-    assert(process_num <= MAX_TASK_NUM); // 任务是否超过最大限度
+    if(process_num > MAX_TASK_NUM) // 任务是否超过最大限度
+        goto fail;
     // 为新任务设置内存
     void* stack_top = get_page() + PAGE_SIZE;  // 栈顶
     // ROP技术
@@ -159,8 +171,13 @@ pid_t create_user_mode_task(void* entry)
     u32 task_idx;
     //寻找空的pcb位置
     for(task_idx = 1;task_idx < MAX_TASK_NUM;task_idx++)
-        if(task_list[task_idx].pid == 0)break;    //无任务
+        if(task_list[task_idx].pid == 0)
+            goto set_process;//无任务
 
+    fail:
+    return -1;
+
+    set_process:
     // 设置进程信息
     task_list[task_idx].pid = ++pid_total;
     task_list[task_idx].next = running->next;

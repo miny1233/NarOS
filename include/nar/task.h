@@ -22,6 +22,7 @@ typedef struct pcb_t
     //打开的文件
     struct fd files[FD_NR];
     u8 dpl; // 特权级
+    u8 *kernel_stack; //陷入内核态时的堆栈
 } pcb_t;
 
 typedef pcb_t task_t;   //task_t 与 pcb_t 都是进程控制块
