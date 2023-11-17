@@ -6,6 +6,7 @@
 #include <nar/mem.h>
 #include <memory.h>
 #include <nar/panic.h>
+#include <errno.h>
 
 volatile task_t *running;        // 当前运行的任务
 size_t process_num = 0; // 运行任务数
