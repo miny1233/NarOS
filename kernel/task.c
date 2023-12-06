@@ -85,12 +85,6 @@ void task_init()
 
 }
 
-pid_t kernel_clone()
-{
-    return -EINVAL;
-}
-
-
 // 创建内核任务 需要提供程序入口
 task_t* task_create(void *entry) {
 
@@ -154,7 +148,7 @@ void task_exit()
 
     set_interrupt_state(1);
     //任务被移除，需要强制切换来更新
-    yield();
+   schedule();
 }
 
 pid_t create_user_mode_task(void* entry)
@@ -195,8 +189,7 @@ pid_t create_user_mode_task(void* entry)
             goto set_process;//无任务
         }
 
-    fail:
-    return -1;
+    goto fail;
 
     set_process:
     // 设置进程信息
@@ -212,13 +205,28 @@ pid_t create_user_mode_task(void* entry)
     process_num++;  //运行任务数+1
 
     set_interrupt_state(1); //  任务创建完毕
+
     return task_list[task_idx].pid;
+
+    fail:
+    return -1;
 }
 
+pid_t kernel_clone()
+{
+    return -EINVAL;
+}
 
 // fork()系统调用
-void sys_fork()
+int sys_fork()
 {
-
+    return -EINVAL;
 }
+
+// yield()系统调用
+void yield()
+{
+    schedule();
+}
+
 

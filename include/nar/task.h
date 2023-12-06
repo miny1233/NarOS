@@ -65,6 +65,8 @@ pid_t create_user_mode_task(void* entry);
 
 void task_exit();
 
-#define yield() asm("int $0x20\n")
+// 系统调用
+void sys_yield();
+int sys_fork();
 
 
