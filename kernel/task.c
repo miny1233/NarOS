@@ -8,7 +8,7 @@
 #include <nar/panic.h>
 #include <errno.h>
 
-volatile task_t *running;        // 当前运行的任务
+task_t *running;        // 当前运行的任务
 size_t process_num = 0; // 运行任务数
 task_t task_list[128];  // 任务列表 所有任务在这里统一管理
 pid_t pid_total = 0;
@@ -47,13 +47,15 @@ void schedule()
     if(process_num > 1 && running->pid == 0)
         goto next_task;
 
+    struct mm_struct* mm = &running->mm;
+
     // 如果中断涉及DPL改变 会使用ss0 esp0替换
     if(running->dpl != 0)
-        tss.esp0 = (u32)running->kernel_stack + PAGE_SIZE;
+        tss.esp0 = (u32)mm->kernel_stack + PAGE_SIZE;
 
     // 是否需要切换页目录
-    if(get_cr3() != running->cr3)
-        set_cr3(running->cr3);
+    if(get_cr3() != mm->pte)
+        set_cr3(mm->pte);
     // 一般情况下页表是不会改变的 所以无需保存
 
     context_switch(back_task, running);
@@ -66,7 +68,7 @@ void task_init()
     // 手动加载进程 0
     task_list[0].pid = 0;
     task_list[0].next = &task_list[0];  // 循环链表 自己指向自己
-    task_list[0].cr3 = get_cr3();   // 页表不会自动保存
+    task_list[0].mm.pte = get_cr3();   // 页表不会自动保存
     task_list[0].dpl = 0;
 
     process_num++;
@@ -116,9 +118,9 @@ task_t* task_create(void *entry) {
     new_task->next = running->next;
     new_task->esp = (u32)stack_top - sizeof(interrupt_stack_frame);
     new_task->ebp = (u32)stack_top;
-    new_task->cr3 = get_cr3();    //与主进程共享cr3
+    new_task->mm.pte = get_cr3();    //与主进程共享cr3
     new_task->dpl = 0;    // 内核态
-    new_task->kernel_stack = get_page(); //陷入内核态时堆栈
+    new_task->mm.kernel_stack = get_page(); //陷入内核态时堆栈
 
     //下一个任务指向新任务
     running->next = new_task;
@@ -133,7 +135,7 @@ task_t* task_create(void *entry) {
     return 0;
 }
 
-//还需要有释放内存的功能
+// 任务回收
 void task_exit()
 {
     set_interrupt_state(0);
@@ -145,6 +147,10 @@ void task_exit()
     back->next = running->next;
     running->pid = 0;   //标记任务无效
     process_num--;  // 运行任务数-1
+
+    // 释放内核堆栈
+    put_page(running->mm.kernel_stack);
+
 
     set_interrupt_state(1);
     //任务被移除，需要强制切换来更新
@@ -191,14 +197,14 @@ pid_t create_user_mode_task(void* entry)
 
     goto fail;
 
-    set_process:
+set_process:
     // 设置进程信息
     new_task->pid = ++pid_total;
     new_task->next = running->next;
     new_task->esp = (u32)stack_top - sizeof(interrupt_stack_frame);
     new_task->ebp = (u32)stack_top;
     //现在是测试，应该复制页表
-    new_task->cr3 = get_cr3();
+    new_task->mm.pte = get_cr3();
     new_task->dpl = 3;    //用户态
 
     running->next =new_task;
@@ -208,23 +214,64 @@ pid_t create_user_mode_task(void* entry)
 
     return task_list[task_idx].pid;
 
-    fail:
+fail:
     return -1;
 }
 
-pid_t kernel_clone()
+static pcb_t* get_empty_pcb()
 {
-    return -EINVAL;
+    int task_idx;
+    pcb_t *new_task = NULL;
+
+    for(task_idx=1;task_idx < MAX_TASK_NUM;task_idx++)
+    {
+        if(task_list[task_idx].pid == 0)    //无任务
+        {
+            new_task = &task_list[task_idx];
+            break;
+        }
+    }
+
+    return new_task;
+}
+
+
+pid_t kernel_clone(struct kernel_clone_args* args)
+{
+    pcb_t *child = get_empty_pcb();
+    pcb_t *father = running;
+    // 复制父进程信息
+    memcpy(child,running,sizeof(pcb_t));
+
+    // 取出内存结构
+    struct mm_struct *mm = &child->mm;
+
+    //设置pid
+    child->pid = pid_total++;
+
+    if (args->flags & CLONE_STACK)
+        return -EINVAL;
+    if (args->flags & CLONE_PTE)
+    {
+        // 拷贝页表 不是共享（写时复制基础）
+        copy_pte_to_child(&father->mm,&child->mm);
+    }
+
+    return child->pid;
 }
 
 // fork()系统调用
-int sys_fork()
+pid_t sys_fork()
 {
-    return -EINVAL;
+    struct kernel_clone_args clone_fork = {
+            .flags = CLONE_FORK,
+    };
+
+    return kernel_clone(&clone_fork);
 }
 
 // yield()系统调用
-void yield()
+void sys_yield()
 {
     schedule();
 }

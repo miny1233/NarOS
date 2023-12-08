@@ -6,6 +6,7 @@
 
 #include <nar/globa.h>
 #include <nar/fs/fs.h>
+#include "mem.h"
 
 typedef u32 pid_t;
 
@@ -14,20 +15,23 @@ typedef u32 pid_t;
 // 进程控制块
 typedef struct pcb_t
 {
+    // 任务堆栈状态
     u32 ebp;
     u32 esp;
-    u32 cr3; //在页表中ignored用于记录申请的内存
+    // 任务描述
     struct pcb_t* next;    // 下一个任务
     pid_t pid;
     //打开的文件
     struct fd files[FD_NR];
+    //特权级状态
     u8 dpl; // 特权级
-    u8 *kernel_stack; //陷入内核态时的堆栈
+    // 内存
+    struct mm_struct mm;
 } pcb_t;
 
 typedef pcb_t task_t;   //task_t 与 pcb_t 都是进程控制块
 
-extern volatile task_t *running; //正在运行的程序
+extern task_t *running; //正在运行的程序
 
 // 中断帧
 typedef struct {
@@ -65,8 +69,20 @@ pid_t create_user_mode_task(void* entry);
 
 void task_exit();
 
+#define CLONE_STACK (1L)  // 克隆堆栈
+#define CLONE_PTE (1L << 1) // 克隆页表
+
+#define CLONE_FORK (CLONE_STACK | CLONE_PTE) // fork
+
+struct kernel_clone_args
+{
+    u32 flags;
+    u32 stack_size;
+};
+
+
 // 系统调用
 void sys_yield();
-int sys_fork();
+pid_t sys_fork();
 
 

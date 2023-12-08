@@ -13,7 +13,19 @@ void memory_init();
 void* get_page();
 void put_page(void* addr);
 
-u32 get_cr3();
-void set_cr3(u32 pde);
+void* get_cr3();
+void set_cr3(void* pde);
+
+struct mm_struct{
+    // vma
+    void* pte; // 页目录地址
+    // data segment
+    void* start_brk; //data段起点
+    void* brk;       // data段终点
+
+    u8 *kernel_stack; //陷入内核态时的堆栈
+};
+
+int copy_pte_to_child(struct mm_struct* father,struct mm_struct* child);
 
 #endif //NAROS_MEM_H
