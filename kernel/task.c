@@ -118,7 +118,11 @@ task_t* task_create(void *entry) {
     new_task->next = running->next;
     new_task->esp = (u32)stack_top - sizeof(interrupt_stack_frame);
     new_task->ebp = (u32)stack_top;
-    new_task->mm.pte = get_cr3();    //与主进程共享cr3
+    //new_task->mm.pte = get_cr3();    //与主进程共享cr3
+
+    // 拷贝页表
+    copy_pte_to_child(&running->mm,&new_task->mm);
+
     new_task->dpl = 0;    // 内核态
     new_task->mm.kernel_stack = get_page(); //陷入内核态时堆栈
 
@@ -149,7 +153,7 @@ void task_exit()
     process_num--;  // 运行任务数-1
 
     // 释放内核堆栈
-    put_page(running->mm.kernel_stack);
+    //put_page(running->mm.kernel_stack);
 
 
     set_interrupt_state(1);

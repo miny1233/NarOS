@@ -51,8 +51,8 @@ int init(unsigned long magic, multiboot_info_t* _info)
 void child()
 {
     //while(1);
-    int i = 0;
-    while(1)
-        printk("%d i am child!\n",i++); // 用户态不能使用printk
-    //task_exit();
+    int i = 5000;
+    while(i--)
+        printk("%d i am child!\n",i); // 用户态不能使用printk
+    task_exit();
 }

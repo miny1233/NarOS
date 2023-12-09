@@ -62,7 +62,7 @@ static void entry_init(page_entry_t *entry, u32 index)
     *(u32 *)entry = 0;
     entry->present = 1;
     entry->write = 1;
-    entry->user = 1;
+    entry->user = 0;    // 超级用户
     entry->index = index;
 }
 
@@ -191,17 +191,16 @@ int copy_pte_to_child(struct mm_struct* father,struct mm_struct* child)
 {
     child->pte = get_page();
     //复制页表
-    memcpy(child->pte,father->pte,sizeof(page_entry_t));
+    memcpy(child->pte,father->pte,PAGE_SIZE);
 
     // 制作页表项指针，防止写错代码
     page_entry_t *child_pte = child->pte,
                     *father_pte = father->pte;
 
-    for(u32 index=0;index < (PAGE_SIZE / sizeof(page_entry_t)); index++)
+    for(u32 index=0;index < PTE_SIZE; index++)
     {
-        if (father_pte[index].present)
+        if (child_pte[index].present)
         {
-            memcpy(child_pte + index,father + index,sizeof(page_entry_t));
             // 为页表申请内存
             page_entry_t *sub_pte = get_page();
             child_pte[index].index = IDX(sub_pte);
