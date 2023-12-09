@@ -178,15 +178,6 @@ static void kernel_pte_init()
     enable_page();
 }
 
-static int reference_phy_mem(u32 idx){
-    if (idx < IDX(USER_PMA_START))
-        goto fail;
-
-    return ++page_map[idx]; // 引用次数++
-fail:
-    return -1;
-}
-
 int copy_pte_to_child(struct mm_struct* father,struct mm_struct* child)
 {
     child->pte = get_page();
@@ -210,12 +201,16 @@ int copy_pte_to_child(struct mm_struct* father,struct mm_struct* child)
 
             for (int sub_idx = 0;sub_idx < PTE_SIZE;sub_idx++)
             {
-                if(!fa_sub_pte[sub_idx].present) continue;
+                // 取出当前页表项
+                page_entry_t *fa_pet = fa_sub_pte + sub_idx;
+
+                if(!fa_pet->present) continue;
                 // 内存增加引用
-                reference_phy_mem(fa_sub_pte[sub_idx].index);
+                if (fa_pet->index >= IDX(USER_VMA_START))
+                    page_map[fa_pet->index]++;
                 // 内存只读 写时复制 除内核页
-                if(fa_sub_pte[index].user)
-                    fa_sub_pte[index].write = 0;
+                if(fa_pet->user)
+                    fa_pet->write = 0;
             }
             // 复制页表
             memcpy(sub_pte,fa_sub_pte,PAGE_SIZE);
