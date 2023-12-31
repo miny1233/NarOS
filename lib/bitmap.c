@@ -6,7 +6,7 @@
 u8 bitmap_get(const u8* begin,size_t bit)
 {
     size_t var_offset = bit / 8;
-    return begin[var_offset] >> (bit % 8);
+    return (begin[var_offset] >> (bit % 8)) & 0x1;
 }
 
 void bitmap_set(u8* begin,size_t bit,u8 value)

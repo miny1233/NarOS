@@ -10,11 +10,19 @@
 
 task_t *running;        // 当前运行的任务
 size_t process_num = 0; // 运行任务数
-task_t task_list[128];  // 任务列表 所有任务在这里统一管理
+task_t task_list[MAX_TASK_NUM];  // 任务列表 所有任务在这里统一管理 (bitmap太大，10个任务结构体就有1.3M 之后得换种方式储存)
 pid_t pid_total = 0;
 extern tss_t tss;
 
 extern void interrupt_handler_ret_0x20();  //时钟中断返回地址
+
+// 取出根任务
+// 内核最基本的任务 通过这个进程来保证内核任务的内存完整性
+task_t* get_root_task()
+{
+    return &task_list[0];
+}
+
 
 // 初始化中断栈
 static void stack_init(void* entry,void* stack_top)
@@ -51,7 +59,7 @@ void schedule()
 
     // 如果中断涉及DPL改变 会使用ss0 esp0替换
     if(running->dpl != 0)
-        tss.esp0 = (u32)mm->kernel_stack + PAGE_SIZE;
+        tss.esp0 = (u32)mm->kernel_stack_start + PAGE_SIZE;
 
     // 是否需要切换页目录
     if(get_cr3() != mm->pte)
@@ -68,8 +76,9 @@ void task_init()
     // 手动加载进程 0
     task_list[0].pid = 0;
     task_list[0].next = &task_list[0];  // 循环链表 自己指向自己
-    task_list[0].mm.pte = get_cr3();   // 页表不会自动保存
     task_list[0].dpl = 0;
+
+    task_list[0].mm.pte = get_cr3();   // 页表不会自动保存
 
     process_num++;
     running = &task_list[0];
@@ -85,6 +94,7 @@ void task_init()
     interrupt_hardler_register(0x20, clock_int);    // 注册中断处理
     set_interrupt_mask(0,1);    // 允许时钟中断
 
+    LOG("load kernel task at pid 0");
 }
 
 // 创建内核任务 需要提供程序入口
@@ -96,7 +106,7 @@ task_t* task_create(void *entry) {
     set_interrupt_state(0); // 保证原子操作 否则可能会调度出错
 
     // 为新任务设置内存
-    void* stack_top = get_page() + PAGE_SIZE;  // 栈顶
+    void* stack_top = alloc_page(1) + PAGE_SIZE;  // 栈顶
     stack_init(entry,stack_top);
 
     u32 task_idx;
@@ -118,13 +128,13 @@ task_t* task_create(void *entry) {
     new_task->next = running->next;
     new_task->esp = (u32)stack_top - sizeof(interrupt_stack_frame);
     new_task->ebp = (u32)stack_top;
-    //new_task->mm.pte = get_cr3();    //与主进程共享cr3
 
-    // 拷贝页表
-    copy_pte_to_child(&running->mm,&new_task->mm);
+    //与主进程共享cr3
+    new_task->mm.pte = task_list[0].mm.pte;
+
 
     new_task->dpl = 0;    // 内核态
-    new_task->mm.kernel_stack = get_page(); //陷入内核态时堆栈
+    //new_task->mm.kernel_stack = get_page(); //陷入内核态时堆栈
 
     //下一个任务指向新任务
     running->next = new_task;
@@ -161,13 +171,14 @@ void task_exit()
    schedule();
 }
 
+//只允许内核调用一次
 pid_t create_user_mode_task(void* entry)
 {
     set_interrupt_state(0); // 保证原子操作 否则可能会调度出错
     if(process_num > MAX_TASK_NUM) // 任务是否超过最大限度
         goto fail;
     // 为新任务设置内存
-    void* stack_top = get_page() + PAGE_SIZE;  // 栈顶
+    void* stack_top = alloc_page(1) + PAGE_SIZE;  // 栈顶
     // ROP技术
     interrupt_stack_frame* stack = stack_top - sizeof(interrupt_stack_frame);
 
@@ -207,11 +218,12 @@ set_process:
     new_task->next = running->next;
     new_task->esp = (u32)stack_top - sizeof(interrupt_stack_frame);
     new_task->ebp = (u32)stack_top;
-    //现在是测试，应该复制页表
-    new_task->mm.pte = get_cr3();
+
+    // 复制当前任务的页表
+    fork_mm_struct(&new_task->mm,&running->mm);
     new_task->dpl = 3;    //用户态
 
-    running->next =new_task;
+    running->next = new_task;
     process_num++;  //运行任务数+1
 
     set_interrupt_state(1); //  任务创建完毕
@@ -239,11 +251,13 @@ static pcb_t* get_empty_pcb()
     return new_task;
 }
 
-
 pid_t kernel_clone(struct kernel_clone_args* args)
 {
     pcb_t *child = get_empty_pcb();
     pcb_t *father = running;
+
+    if(child == NULL)
+        return -1;
     // 复制父进程信息
     memcpy(child,running,sizeof(pcb_t));
 
@@ -258,7 +272,7 @@ pid_t kernel_clone(struct kernel_clone_args* args)
     if (args->flags & CLONE_PTE)
     {
         // 拷贝页表 不是共享（写时复制基础）
-        copy_pte_to_child(&father->mm,&child->mm);
+        fork_mm_struct(&child->mm,&father->mm);
     }
 
     return child->pid;

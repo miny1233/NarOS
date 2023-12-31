@@ -6,26 +6,35 @@
 #define NAROS_MEM_H
 
 #define PAGE_SIZE 0x1000        // 4k Page
+#define BITMAP_SIZE ((1 * 1024 * 1024) / 8) // 128KB
 
 #include <type.h>
 
 void memory_init();
-void* get_page();
-void put_page(void* addr);
 
 void* get_cr3();
 void set_cr3(void* pde);
 
-struct mm_struct{
-    // vma
-    void* pte; // 页目录地址
-    // data segment
-    void* start_brk; //data段起点
-    void* brk;       // data段终点
+void* alloc_page(int page);
 
-    u8 *kernel_stack; //陷入内核态时的堆栈
+struct vm_area_struct{
+  void* start;
+  void* end;
+  uint32_t flags;
+
+  struct vm_area_struct* next;
 };
 
-int copy_pte_to_child(struct mm_struct* father,struct mm_struct* child);
+//memory structure
+struct mm_struct{
+    void* pte; // 页目录地址
+    struct vm_area_struct* mmap; // vma
+
+    void* kernel_stack_start; //陷入内核态时的栈地址
+
+    char mm_bitmap[BITMAP_SIZE];
+};
+//int init_mm_struct(struct mm_struct** mm);
+int fork_mm_struct(struct mm_struct* child,struct mm_struct* father);
 
 #endif //NAROS_MEM_H

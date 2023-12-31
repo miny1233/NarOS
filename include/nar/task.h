@@ -1,7 +1,7 @@
 #define CLOCK_INT_COUNT_PER_SECOND 19 // 最小值为每秒19次 小于这个值会越界 值无效
 #define CLOCK_INT_HZ (1193182 / CLOCK_INT_COUNT_PER_SECOND)  // 最大 65535 否则越界
 
-#define MAX_TASK_NUM 128
+#define MAX_TASK_NUM 100
 #define FD_NR 31
 
 #include <nar/globa.h>
@@ -68,6 +68,8 @@ task_t* task_create(void *entry);
 pid_t create_user_mode_task(void* entry);
 
 void task_exit();
+
+task_t* get_root_task();
 
 #define CLONE_STACK (1L)  // 克隆堆栈
 #define CLONE_PTE (1L << 1) // 克隆页表

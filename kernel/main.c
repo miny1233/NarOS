@@ -18,7 +18,9 @@ multiboot_info_t* device_info;
 
 static void check_grub(uint32_t magic)
 {
-    if (magic != MULTIBOOT_BOOTLOADER_MAGIC)panic("Non-GRUB Boot Kernel\n");
+    if (magic != MULTIBOOT_BOOTLOADER_MAGIC)
+        panic("Non-GRUB Boot Kernel\n");
+
     if (device_info->flags & (1 << 9))
         printk("boot by %s\n",device_info->boot_loader_name);
 }
@@ -39,11 +41,12 @@ int init(unsigned long magic, multiboot_info_t* _info)
     interrupt_hardler_register(0x21,keyboard_handler);
     set_interrupt_mask(1,1); //启动键盘中断
 
-    task_create(child);
-    //create_user_mode_task(child);
+    //task_create(child);
+    create_user_mode_task(child);
     //create_user_mode_task(child);
 
     int stack_val;
+
     printk("stack_start: %x\n",&stack_val);
     return 0; //初始化完毕，初始化程序变idle程序
 }
@@ -51,8 +54,9 @@ int init(unsigned long magic, multiboot_info_t* _info)
 void child()
 {
     //while(1);
-    int i = 5000;
+    int i = 1;
     while(i--)
         printk("%d i am child!\n",i); // 用户态不能使用printk
+        while(1);
     task_exit();
 }

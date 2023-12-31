@@ -5,6 +5,8 @@
 #include <memory.h>
 #include <nar/multiboot.h>
 #include <math.h>
+#include <nar/task.h>
+#include <bitmap.h>
 
 typedef struct page_entry_t
 {
@@ -32,10 +34,11 @@ u32 total_page;
 
 #define PTE_SIZE (PAGE_SIZE/sizeof(page_entry_t))
 
-#define KERNEL_MEM_SPACE 0x400000 // 4MB 内核专用内存 (内核代码段 与 数据段)
+#define KERNEL_MEM_SPACE (0xD00000ULL) // 13MB 内核专用内存 (内核代码段 与 数据段) 内存分配时绕过这块物理内存
 
-#define USER_VMA_START 0x800000 // 用户态 VMA 开始地址
-#define USER_PMA_START USER_VMA_START // 用户态 物理地址 开始地址
+#define KERNEL_VMA_START KERNEL_MEM_SPACE
+#define USER_VMA_START (0x40000000ULL) // 用户态 VMA 开始地址 1GB
+#define KERNEL_VMA_END USER_VMA_START
 
 // 内存引用计数 4kb对齐 从0开始
 u8* page_map;
@@ -62,7 +65,7 @@ static void entry_init(page_entry_t *entry, u32 index)
     *(u32 *)entry = 0;
     entry->present = 1;
     entry->write = 1;
-    entry->user = 0;    // 超级用户
+    entry->user = 1;    // 超级用户
     entry->index = index;
 }
 
@@ -124,7 +127,7 @@ void memory_init()
     kernel_pte_init();
 }
 
-void* get_page()
+static void* get_page()
 {
     // 从memory_base开始分配内存
     for(size_t index = IDX(memory_base) ; index < total_page ; index++)
@@ -135,11 +138,11 @@ void* get_page()
             return PAGE(index);
         }
     }
-    panic("Out of Memory");
+    //panic("Out of Memory");
     return NULL;
 }
 
-void put_page(void* addr)
+static void put_page(void* addr)
 {
     assert((u32)addr >= memory_base && (u32)addr < memory_base + memory_size); // 内存必须在可用区域
     size_t index = IDX((u32)addr - memory_base);
@@ -153,35 +156,77 @@ static void page_int(u32 vector)   // 缺页中断
     panic("Error: Segment Failed\n");
 }
 
-// 内核 vma 占用低 8M 空间
+// 映射内核基本的内存
 static void kernel_pte_init()
 {
     //注册缺页中断
-    interrupt_hardler_register(0x0e, page_int);
+    //interrupt_hardler_register(0x0e, page_int);
 
     page_table = get_page(); // 取一页内存用作页目录
-    page_entry_t* pte = get_page(); // 取一页内存用作页表
-    page_entry_t* pte1 = get_page();// 再取一页做页表 内存不够用了
-    memset(page_table,0,PAGE_SIZE); // 全0可以使present为0 便于触发缺页中断
-    memset(pte,0,PAGE_SIZE);
-    memset(pte1,0,PAGE_SIZE);
-    LOG("page_table at 0x%x\n",page_table);
 
-    entry_init(&page_table[0],IDX((u32)pte));   // 页目录0->内核页表
-    entry_init(&page_table[1],IDX((u32)pte1));  // 页目录1->内核页表1
-    for(u32 index=0;index < PAGE_SIZE / 4; index++)// 映射一张页表 总计8M
-    {
-        entry_init(&pte[index],index);   // 映射物理内存在原来的位置
-        entry_init(&pte1[index],PAGE_SIZE / 4 + index);
+    memset(page_table,0,PAGE_SIZE); // 全0可以使present为0 便于触发缺页中断
+    LOG("page_table at 0x%x\n", page_table);
+
+    u32 offset = 0;
+    for(int i = 0;i < 4;i++) {
+        page_entry_t* pte = get_page();
+
+        memset(pte, 0, PAGE_SIZE);
+
+        entry_init(&page_table[i], IDX((u32) pte));   // 页目录0->内核页表
+        for (u32 index = 0; index < PAGE_SIZE / 4; index++)
+        {
+            entry_init(&pte[index], offset++);   // 映射物理内存在原来的位置
+        }
     }
+
+    //task_t* root_task = get_root_task();
+    //for(u32 idx = 0;idx < )
+
     set_cr3(page_table); // cr3指向页目录
     enable_page();
 }
+// 只能映射4k对齐的页面
+int add_mmap(void* vma,struct mm_struct* mm)
+{
 
-int copy_pte_to_child(struct mm_struct* father,struct mm_struct* child)
+    return 0;
+}
+
+// 分配内核态内存
+void* alloc_page(int page)
+{
+    void* ptr = NULL;
+    task_t* root_task = get_root_task();
+    void* root_task_bitmap = root_task->mm.mm_bitmap;
+
+    //寻找连续的虚拟内存
+    u32 index = IDX(KERNEL_VMA_START);
+    for (; index < IDX(KERNEL_VMA_END); index++) {
+        for (int pg = 0;; pg++) {
+            if(!bitmap_get(root_task_bitmap,index))
+            {
+                index += pg;
+                break;
+            }
+            // 如果找到了 连续page个的页面则退出
+            if (pg == page - 1)
+            {
+                goto scan_finish;
+            }
+        }
+    }
+
+scan_finish:
+    ptr = index < IDX(KERNEL_VMA_END) ? PAGE(index) : NULL;
+
+    return ptr;
+}
+
+int fork_mm_struct(struct mm_struct* child,struct mm_struct* father)
 {
     child->pte = get_page();
-    //复制页表
+    //复制一级页表
     memcpy(child->pte,father->pte,PAGE_SIZE);
 
     // 制作页表项指针，防止写错代码
@@ -190,27 +235,28 @@ int copy_pte_to_child(struct mm_struct* father,struct mm_struct* child)
 
     for(u32 index=0;index < PTE_SIZE; index++)
     {
+        // 当此页有效则开始复制
         if (child_pte[index].present)
         {
             // 为页表申请内存
             page_entry_t *sub_pte = get_page();
             child_pte[index].index = IDX(sub_pte);
 
-            // 取父页表
+            // 取父二级页表
             page_entry_t *fa_sub_pte = PAGE(father_pte[index].index);
 
             for (int sub_idx = 0;sub_idx < PTE_SIZE;sub_idx++)
             {
                 // 取出当前页表项
                 page_entry_t *fa_pet = fa_sub_pte + sub_idx;
-
+                // 页表项不存在则不复制
                 if(!fa_pet->present) continue;
                 // 内存增加引用
                 if (fa_pet->index >= IDX(USER_VMA_START))
-                    page_map[fa_pet->index]++;
-                // 内存只读 写时复制 除内核页
-                if(fa_pet->user)
-                    fa_pet->write = 0;
+                    page_map[fa_pet->index]++;  //超过255次引用会溢出（有空再改）
+
+                 //内存只读 （内核态似乎能读写只读的内存 因此不会触发写时复制）
+                fa_pet->write = 1;
             }
             // 复制页表
             memcpy(sub_pte,fa_sub_pte,PAGE_SIZE);
@@ -218,6 +264,5 @@ int copy_pte_to_child(struct mm_struct* father,struct mm_struct* child)
     }
     return 0;
 }
-
 
 // void sys_mmap(void* addr,void* vaddr) {}
