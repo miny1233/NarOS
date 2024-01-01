@@ -252,6 +252,8 @@ check_passed:
         page_entry_t* page_table_sec = get_pte(vaddr,mm);
         flush_tlb(page_table_sec);
 
+        memset(page_table_sec,0,PAGE_SIZE);
+
         page_table_sec += TIDX(vaddr);
 
         //分配物理内存

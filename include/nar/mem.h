@@ -21,7 +21,7 @@ typedef struct page_entry_t
     u8 dirty : 1;    // 脏页，表示该页缓冲被写过
     u8 pat : 1;      // page attribute table 页大小 4K/4M
     u8 global : 1;   // 全局，所有进程都用到了，该页不刷新缓冲
-    u8 ignored : 3;  // 为操作系统保留 (Nar中用于记录这个内存是否是当前程序从内存中申请的内存)
+    u8 ignored : 3;  // 为操作系统保留
     u32 index : 20;  // 页索引
 }__attribute__((packed)) page_entry_t;
 
