@@ -34,16 +34,16 @@ u32 total_page;
 
 #define PTE_SIZE (PAGE_SIZE/sizeof(page_entry_t))
 
-#define KERNEL_MEM_SPACE (0x1000000ULL) // 16MB 内核专用内存 (内核代码段 与 数据段) 内存分配时绕过这块物理内存
-
-#define KERNEL_VMA_START KERNEL_MEM_SPACE
-#define USER_VMA_START (0x40000000ULL) // 用户态 VMA 开始地址 1GB
-#define KERNEL_VMA_END USER_VMA_START
-
 // 内存引用计数 4kb对齐 从0开始
 u8* page_map;
 
 page_entry_t* page_table;  // 页目录
+
+void flush_tlb(u32 vaddr)
+{
+    asm volatile("invlpg (%0)" ::"r"(vaddr)
+            : "memory");
+}
 
 void* get_cr2()
 {
@@ -157,6 +157,18 @@ static void put_page(void* addr)
     page_map[index]--;  // 内存引用次数减少
 }
 
+// 带记录内存位图的页获取
+static void* recorded_get_page(struct mm_struct* mm)
+{
+    void* ptr = get_page();
+    if(ptr == NULL)
+        return NULL;
+
+    //记录使用的内存
+    bitmap_set((u8*)mm->pm_bitmap,IDX(ptr),1);
+    return ptr;
+}
+
 
 struct page_error_code_t
 {
@@ -187,17 +199,64 @@ static void page_int(u32 vector,
 
     LOG("fault virtual address 0x%p\n",vaddr);
 
-    if (!code->present)
-    {
-        panic("no page!\n");
+    //用户态态故障 且 访问内存位置不合法
+    if (running->dpl == 3 && (u32)vaddr < USER_VMA_START)
+        goto fault;
+
+    //取出内存描述符 并检查合法性
+    struct mm_struct* mm = NULL;
+    if(running->dpl == 0) {
+        //内核任务共享描述符
+        mm = &get_root_task()->mm;
+    }
+    else {
+        mm = &running->mm;
     }
 
-    if (code->write)
+    if (!code->present)
+    {
+        //检查是否在堆内存
+        if(vaddr > mm->brk && vaddr < mm->sbrk)
+        {
+            //取出虚拟地址在页目录的表项
+            page_entry_t *page_table_fir = mm->pte + DIDX(vaddr);
+            //缺少页表
+            if(page_table_fir->present == 0)
+            {
+                page_entry_t* page_table_sec = recorded_get_page(mm);
+                if(page_table_sec == NULL)
+                    goto fault;
+
+                page_table_fir->present = 1;
+                entry_init(page_table_fir,IDX(page_table_sec));
+            }
+            // 初始化页表
+            page_entry_t* page_table_sec = PAGE(page_table_fir->index);
+            page_table_sec += TIDX(vaddr);
+
+            void* pm = recorded_get_page(mm);
+            if(pm == NULL)
+                goto fault;
+
+            entry_init(page_table_sec, IDX(pm));
+        }
+        else
+            goto segment_error;
+        //检查 virtual memory area （暂未启用）
+    }
+    else if (code->write)
     {
         panic("write read-only mem\n");
     }
+
+    return;
+segment_error:
+    printk("segment fault!\n");
 fault:
-    panic("unknown page fault!\n");
+    if(running->dpl == 0)
+        panic("page fault!\n");
+    else
+        task_exit();
 }
 
 // 映射内核基本的内存
@@ -237,34 +296,27 @@ int add_mmap(void* vma,struct mm_struct* mm)
     return 0;
 }
 
+void* kernel_sbrk(u32 size)
+{
+    void* ptr = NULL;
+    struct mm_struct* mm = &get_root_task()->mm;
+    //不在有效的虚拟内存范围
+    if((u32)mm->sbrk < KERNEL_VMA_START || (u32)mm->sbrk > KERNEL_VMA_END)
+        return NULL;
+
+    if(mm->sbrk + size < (void*)KERNEL_VMA_END)
+    {
+        ptr = mm->sbrk;
+        mm->sbrk += size;
+    }
+
+    return ptr;
+}
+
 // 分配内核态内存
 void* alloc_page(int page)
 {
-    void* ptr = NULL;
-    task_t* root_task = get_root_task();
-    void* root_task_bitmap = root_task->mm.mm_bitmap;
-
-    //寻找连续的虚拟内存
-    u32 index = IDX(KERNEL_VMA_START);
-    for (; index < IDX(KERNEL_VMA_END); index++) {
-        for (int pg = 0;; pg++) {
-            if(bitmap_get(root_task_bitmap,index))
-            {
-                index += pg;
-                break;
-            }
-            // 如果找到了 连续page个的页面则退出
-            if (pg == page - 1)
-            {
-                goto scan_finish;
-            }
-        }
-    }
-
-scan_finish:
-    ptr = index < IDX(KERNEL_VMA_END) ? PAGE(index) : NULL;
-
-    return ptr;
+    return kernel_sbrk(page * PAGE_SIZE);
 }
 
 int fork_mm_struct(struct mm_struct* child,struct mm_struct* father)

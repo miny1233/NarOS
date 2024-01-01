@@ -78,7 +78,10 @@ void task_init()
     task_list[0].next = &task_list[0];  // 循环链表 自己指向自己
     task_list[0].dpl = 0;
 
+    // 内存描述符初始化
     task_list[0].mm.pte = get_cr3();   // 页表不会自动保存
+    task_list[0].mm.brk = (void*)KERNEL_VMA_START;  // 堆内存初始化
+    task_list[0].mm.sbrk = task_list[0].mm.brk;
 
     process_num++;
     running = &task_list[0];
