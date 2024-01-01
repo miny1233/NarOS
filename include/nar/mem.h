@@ -8,13 +8,22 @@
 #define PAGE_SIZE 0x1000        // 4k Page
 #define BITMAP_SIZE ((1 * 1024 * 1024) / 8) // 128KB
 
-#define KERNEL_MEM_SPACE (0x1000000ULL) // 16MB 内核专用内存 (内核代码段 与 数据段) 内存分配时绕过这块物理内存
-
-#define KERNEL_VMA_START KERNEL_MEM_SPACE
-#define USER_VMA_START (0x40000000ULL) // 用户态 VMA 开始地址 1GB
-#define KERNEL_VMA_END USER_VMA_START
-
 #include <type.h>
+
+typedef struct page_entry_t
+{
+    u8 present : 1;  // 在内存中
+    u8 write : 1;    // 0 只读 1 可读可写
+    u8 user : 1;     // 1 所有人 0 超级用户 DPL < 3
+    u8 pwt : 1;      // page write through 1 直写模式，0 回写模式
+    u8 pcd : 1;      // page cache disable 禁止该页缓冲
+    u8 accessed : 1; // 被访问过，用于统计使用频率
+    u8 dirty : 1;    // 脏页，表示该页缓冲被写过
+    u8 pat : 1;      // page attribute table 页大小 4K/4M
+    u8 global : 1;   // 全局，所有进程都用到了，该页不刷新缓冲
+    u8 ignored : 3;  // 为操作系统保留 (Nar中用于记录这个内存是否是当前程序从内存中申请的内存)
+    u32 index : 20;  // 页索引
+}__attribute__((packed)) page_entry_t;
 
 void memory_init();
 
@@ -36,7 +45,7 @@ struct vm_area_struct{
 
 //memory structure
 struct mm_struct{
-    void* pte; // 页目录地址
+    page_entry_t* pte; // 页目录地址
     struct vm_area_struct* mmap; // vma
 
     void* kernel_stack_start; //陷入内核态时的栈地址
@@ -46,7 +55,8 @@ struct mm_struct{
 
     char pm_bitmap[BITMAP_SIZE]; //物理内存使用位图
 };
-//int init_mm_struct(struct mm_struct** mm);
+//给任务0的内存描述符初始化
+int init_mm_struct(struct mm_struct* mm);
 int fork_mm_struct(struct mm_struct* child,struct mm_struct* father);
 
 #endif //NAROS_MEM_H

@@ -41,10 +41,10 @@ static char *messages[] = {
 
 // 错误追踪
 static void exception_handler(
-        int vector,u32 error,
+        int vector,
         u32 edi, u32 esi, u32 ebp, u32 esp,
         u32 ebx, u32 edx, u32 ecx, u32 eax,
-        u32 gs, u32 fs, u32 es, u32 ds,
+        u32 gs, u32 fs, u32 es, u32 ds,u32 error,
         u32 eip, u32 cs, u32 eflags)
 {
     char *message = NULL;
@@ -70,7 +70,6 @@ static void exception_handler(
     // 通过 EIP 的值应该可以找到出错的位置
     // 也可以在出错时，可以将 hanging 在调试器中手动设置为 0
     // 然后在下面 return 打断点，单步调试，找到出错的位置
-    return;
 }
 
 

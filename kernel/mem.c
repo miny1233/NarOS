@@ -8,21 +8,6 @@
 #include <nar/task.h>
 #include <bitmap.h>
 
-typedef struct page_entry_t
-{
-    u8 present : 1;  // 在内存中
-    u8 write : 1;    // 0 只读 1 可读可写
-    u8 user : 1;     // 1 所有人 0 超级用户 DPL < 3
-    u8 pwt : 1;      // page write through 1 直写模式，0 回写模式
-    u8 pcd : 1;      // page cache disable 禁止该页缓冲
-    u8 accessed : 1; // 被访问过，用于统计使用频率
-    u8 dirty : 1;    // 脏页，表示该页缓冲被写过
-    u8 pat : 1;      // page attribute table 页大小 4K/4M
-    u8 global : 1;   // 全局，所有进程都用到了，该页不刷新缓冲
-    u8 ignored : 3;  // 为操作系统保留 (Nar中用于记录这个内存是否是当前程序从内存中申请的内存)
-    u32 index : 20;  // 页索引
-}__attribute__((packed)) page_entry_t;
-
 u32 memory_base = 0;  //由于GRUB把内核载入到了1M处，为了保证安全至少从2M开始有效
 u32 memory_size = 0;
 u32 total_page;
@@ -34,12 +19,19 @@ u32 total_page;
 
 #define PTE_SIZE (PAGE_SIZE/sizeof(page_entry_t))
 
+#define KERNEL_MEM_SPACE (0xE00000ULL) // 16MB 内核专用内存 (内核代码段 与 数据段) 内存分配时绕过这块物理内存
+#define KERNEL_VMA_START (0x2000000ULL)
+#define USER_VMA_START  (0x40000000ULL) // 用户态 VMA 开始地址 1GB
+#define KERNEL_VMA_END USER_VMA_START
+
+#define PDE_MASK 0xFFC00000
+
 // 内存引用计数 4kb对齐 从0开始
 u8* page_map;
 
 page_entry_t* page_table;  // 页目录
 
-void flush_tlb(u32 vaddr)
+void flush_tlb(void* vaddr)
 {
     asm volatile("invlpg (%0)" ::"r"(vaddr)
             : "memory");
@@ -169,6 +161,28 @@ static void* recorded_get_page(struct mm_struct* mm)
     return ptr;
 }
 
+int init_mm_struct(struct mm_struct* mm)
+{
+    mm->pte = get_cr3();
+    page_entry_t* self = mm->pte + DIDX(PDE_MASK);
+    entry_init(self, IDX(mm->pte));
+    //堆内存初始化
+    mm->brk = (void*)KERNEL_VMA_START;
+    mm->sbrk = mm->brk;
+
+    memset(mm->pm_bitmap,0,sizeof (mm->pm_bitmap));
+    return 0;
+}
+
+// 获取虚拟地址 vaddr 对应的页表
+static page_entry_t *get_pte(void* vaddr,struct mm_struct* mm)
+{
+    u32 idx = DIDX(vaddr);
+
+    page_entry_t *table = (page_entry_t *)(PDE_MASK | (idx << 12));
+
+    return table;
+}
 
 struct page_error_code_t
 {
@@ -186,11 +200,11 @@ struct page_error_code_t
 
 
 // 缺页中断
-static void page_int(u32 vector,
+static void page_int(int vector,
                      u32 edi, u32 esi, u32 ebp, u32 esp,
                      u32 ebx, u32 edx, u32 ecx, u32 eax,
-                     u32 gs, u32 fs, u32 es, u32 ds,
-                     u32 vector0, u32 error, u32 eip, u32 cs, u32 eflags)
+                     u32 gs, u32 fs, u32 es, u32 ds,u32 error,
+                     u32 eip, u32 cs, u32 eflags)
 {
     assert(vector == 0xe);
 
@@ -213,42 +227,55 @@ static void page_int(u32 vector,
         mm = &running->mm;
     }
 
+    //检查是否在堆内存
+    if(vaddr >= mm->brk && vaddr < mm->sbrk)
+        goto check_passed;
+    //检查 virtual memory area （暂未启用）
+    goto segment_error;
+
+check_passed:
+
     if (!code->present)
     {
-        //检查是否在堆内存
-        if(vaddr > mm->brk && vaddr < mm->sbrk)
+        //取出虚拟地址在页目录的表项
+        page_entry_t *page_table_fir = mm->pte + DIDX(vaddr);
+        //缺少页表
+        if(page_table_fir->present == 0)
         {
-            //取出虚拟地址在页目录的表项
-            page_entry_t *page_table_fir = mm->pte + DIDX(vaddr);
-            //缺少页表
-            if(page_table_fir->present == 0)
-            {
-                page_entry_t* page_table_sec = recorded_get_page(mm);
-                if(page_table_sec == NULL)
-                    goto fault;
-
-                page_table_fir->present = 1;
-                entry_init(page_table_fir,IDX(page_table_sec));
-            }
-            // 初始化页表
-            page_entry_t* page_table_sec = PAGE(page_table_fir->index);
-            page_table_sec += TIDX(vaddr);
-
-            void* pm = recorded_get_page(mm);
-            if(pm == NULL)
+            page_entry_t* page_table_sec = recorded_get_page(mm);
+            if(page_table_sec == NULL)
                 goto fault;
 
-            entry_init(page_table_sec, IDX(pm));
+            entry_init(page_table_fir,IDX(page_table_sec));
         }
-        else
-            goto segment_error;
-        //检查 virtual memory area （暂未启用）
+        // 初始化页表
+        page_entry_t* page_table_sec = get_pte(vaddr,mm);
+        flush_tlb(page_table_sec);
+
+        page_table_sec += TIDX(vaddr);
+
+        //分配物理内存
+        void* pm = recorded_get_page(mm);
+        if(pm == NULL)
+            goto fault;
+
+        entry_init(page_table_sec, IDX(pm));
+        flush_tlb(vaddr);
+        goto ok;
     }
     else if (code->write)
     {
-        panic("write read-only mem\n");
-    }
+        page_entry_t* pte = get_pte(vaddr,mm);
 
+        LOG("present %d\n",pte->present);
+
+        flush_tlb(vaddr);
+        goto ok;
+        //panic("write read-only mem\n");
+    }
+    goto fault;
+
+ok:
     return;
 segment_error:
     printk("segment fault!\n");

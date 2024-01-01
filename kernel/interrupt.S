@@ -5,25 +5,31 @@
 .text
 .macro INTERRUPT_HANDLER vector,sys
 interrupt_handler_\vector:
+
+.if \sys == 0
+ pushl $1233    # 不是错误则压入magic
+.endif
+
  push %ds
  push %es
  push %fs
  push %gs
+
  pusha
-.if \sys == 0
- pushl $1233    # 不是错误则压入magic
-.endif
  pushl $\vector        # 传递中断号
  movl $\vector,%ebx
  shll $2,%ebx
  call *interrupt_hardler_list(%ebx)
 interrupt_handler_ret_\vector:
- add $8,%esp  #维护栈平衡 弹出 vector 和 error
+ pop %eax #弹出vector
+
  popa
  pop %gs
  pop %fs
  pop %es
  pop %ds
+
+ add $4,%esp #弹出error或者magic
  iret
 .endm
 

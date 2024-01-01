@@ -34,7 +34,7 @@ static void stack_init(void* entry,void* stack_top)
     stack->esp = (u32)&stack->eip;    //IA32中此值被忽略
     stack->eip = (u32)entry;
     stack->cs = KERNEL_CODE_SELECTOR;
-    stack->eflags=582;
+    stack->eflags= 582;
 }
 
 static void clock_int(int vector)
@@ -79,9 +79,7 @@ void task_init()
     task_list[0].dpl = 0;
 
     // 内存描述符初始化
-    task_list[0].mm.pte = get_cr3();   // 页表不会自动保存
-    task_list[0].mm.brk = (void*)KERNEL_VMA_START;  // 堆内存初始化
-    task_list[0].mm.sbrk = task_list[0].mm.brk;
+    init_mm_struct(&task_list[0].mm);
 
     process_num++;
     running = &task_list[0];

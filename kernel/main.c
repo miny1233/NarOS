@@ -25,7 +25,7 @@ static void check_grub(uint32_t magic)
         printk("boot by %s\n",device_info->boot_loader_name);
 }
 
-int init(unsigned long magic, multiboot_info_t* _info)
+_Noreturn int init(unsigned long magic, multiboot_info_t* _info)
 {
     device_init();      // 设备初始化
     tty_init();         // 基本显示驱动 (printk依赖)
@@ -41,14 +41,23 @@ int init(unsigned long magic, multiboot_info_t* _info)
     interrupt_hardler_register(0x21,keyboard_handler);
     set_interrupt_mask(1,1); //启动键盘中断
 
+    LOG("start child proc!\n");
     task_create(child);
+    LOG("over");
     //create_user_mode_task(child);
     //create_user_mode_task(child);
 
-    int stack_val;
+    int *ptr = NULL;
+    ptr = alloc_page(1);
+    printk("stack_start: %x\n",ptr);
+    *ptr = 0x114514;
+    printk("stack_start: %x\n",*ptr);
 
-    printk("stack_start: %x\n",&stack_val);
-    return 0; //初始化完毕，初始化程序变idle程序
+    //初始化完毕，初始化程序变idle程序
+    while(1)
+    {
+        asm volatile("hlt");
+    }
 }
 
 void child()
