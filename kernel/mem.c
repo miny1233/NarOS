@@ -34,7 +34,7 @@ u32 total_page;
 
 #define PTE_SIZE (PAGE_SIZE/sizeof(page_entry_t))
 
-#define KERNEL_MEM_SPACE (0xD00000ULL) // 13MB 内核专用内存 (内核代码段 与 数据段) 内存分配时绕过这块物理内存
+#define KERNEL_MEM_SPACE (0x1000000ULL) // 16MB 内核专用内存 (内核代码段 与 数据段) 内存分配时绕过这块物理内存
 
 #define KERNEL_VMA_START KERNEL_MEM_SPACE
 #define USER_VMA_START (0x40000000ULL) // 用户态 VMA 开始地址 1GB
@@ -44,6 +44,12 @@ u32 total_page;
 u8* page_map;
 
 page_entry_t* page_table;  // 页目录
+
+void* get_cr2()
+{
+    // 直接将 mov eax, cr2，返回值在 eax 中
+    asm volatile("movl %cr2, %eax\n");
+}
 
 void* get_cr3(){
     asm volatile("movl %cr3,%eax\n");
@@ -151,16 +157,54 @@ static void put_page(void* addr)
     page_map[index]--;  // 内存引用次数减少
 }
 
-static void page_int(u32 vector)   // 缺页中断
+
+struct page_error_code_t
 {
-    panic("Error: Segment Failed\n");
+    u8 present : 1;
+    u8 write : 1;
+    u8 user : 1;
+    u8 reserved0 : 1;
+    u8 fetch : 1;
+    u8 protection : 1;
+    u8 shadow : 1;
+    u8 reserved1 : 8;
+    u8 sgx : 1;
+    u16 reserved2;
+}__attribute__((packed)) page_error_code_t;
+
+
+// 缺页中断
+static void page_int(u32 vector,
+                     u32 edi, u32 esi, u32 ebp, u32 esp,
+                     u32 ebx, u32 edx, u32 ecx, u32 eax,
+                     u32 gs, u32 fs, u32 es, u32 ds,
+                     u32 vector0, u32 error, u32 eip, u32 cs, u32 eflags)
+{
+    assert(vector == 0xe);
+
+    void* vaddr = get_cr2();
+    struct page_error_code_t *code = (struct page_error_code_t *)&error;
+
+    LOG("fault virtual address 0x%p\n",vaddr);
+
+    if (!code->present)
+    {
+        panic("no page!\n");
+    }
+
+    if (code->write)
+    {
+        panic("write read-only mem\n");
+    }
+fault:
+    panic("unknown page fault!\n");
 }
 
 // 映射内核基本的内存
 static void kernel_pte_init()
 {
     //注册缺页中断
-    //interrupt_hardler_register(0x0e, page_int);
+    interrupt_hardler_register(0x0e, page_int);
 
     page_table = get_page(); // 取一页内存用作页目录
 
@@ -204,7 +248,7 @@ void* alloc_page(int page)
     u32 index = IDX(KERNEL_VMA_START);
     for (; index < IDX(KERNEL_VMA_END); index++) {
         for (int pg = 0;; pg++) {
-            if(!bitmap_get(root_task_bitmap,index))
+            if(bitmap_get(root_task_bitmap,index))
             {
                 index += pg;
                 break;

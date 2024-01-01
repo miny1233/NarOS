@@ -5,7 +5,7 @@
 void panic(char* error)
 {
     asm("cli");
-    tty_clear();
+    //tty_clear();
     printk("!!! PANIC !!!\n %s",error);
     asm("hlt");
 }

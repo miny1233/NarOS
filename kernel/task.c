@@ -94,7 +94,7 @@ void task_init()
     interrupt_hardler_register(0x20, clock_int);    // 注册中断处理
     set_interrupt_mask(0,1);    // 允许时钟中断
 
-    LOG("load kernel task at pid 0");
+    LOG("load kernel task at pid 0\n");
 }
 
 // 创建内核任务 需要提供程序入口

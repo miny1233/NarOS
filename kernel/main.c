@@ -41,8 +41,8 @@ int init(unsigned long magic, multiboot_info_t* _info)
     interrupt_hardler_register(0x21,keyboard_handler);
     set_interrupt_mask(1,1); //启动键盘中断
 
-    //task_create(child);
-    create_user_mode_task(child);
+    task_create(child);
+    //create_user_mode_task(child);
     //create_user_mode_task(child);
 
     int stack_val;
