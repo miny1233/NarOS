@@ -25,7 +25,7 @@ static void check_grub(uint32_t magic)
         printk("boot by %s\n",device_info->boot_loader_name);
 }
 
-_Noreturn int init(unsigned long magic, multiboot_info_t* _info)
+int init(unsigned long magic, multiboot_info_t* _info)
 {
     device_init();      // 设备初始化
     tty_init();         // 基本显示驱动 (printk依赖)
@@ -48,21 +48,22 @@ _Noreturn int init(unsigned long magic, multiboot_info_t* _info)
     //create_user_mode_task(child);
 
     int *ptr = NULL;
-    ptr = alloc_page(1);
+    ptr = alloc_page(1000);
     printk("stack_start: %x\n",ptr);
-    *ptr = 0x114514;
+    for(int i = 0; i < 3;i++)
+    {
+        *ptr = 0x1023;
+        ptr += 4096;
+    }
     printk("stack_start: %x\n",*ptr);
 
     //初始化完毕，初始化程序变idle程序
-    while(1)
-    {
-        asm volatile("hlt");
-    }
+    return 0;
 }
 
 void child()
 {
-    //while(1);
+    while(1);
     int i = 1;
     while(i--)
         printk("%d i am child!\n",i); // 用户态不能使用printk

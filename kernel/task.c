@@ -9,9 +9,12 @@
 #include <errno.h>
 
 task_t *running;        // 当前运行的任务
+
 size_t process_num = 0; // 运行任务数
-task_t task_list[MAX_TASK_NUM];  // 任务列表 所有任务在这里统一管理 (bitmap太大，10个任务结构体就有1.3M 之后得换种方式储存)
+task_t task_list[MAX_TASK_NUM];  // 任务列表 所有任务在这里统一管理
+struct mm_struct root_mm;   //根任务内存描述符
 pid_t pid_total = 0;
+
 extern tss_t tss;
 
 extern void interrupt_handler_ret_0x20();  //时钟中断返回地址
@@ -21,20 +24,6 @@ extern void interrupt_handler_ret_0x20();  //时钟中断返回地址
 task_t* get_root_task()
 {
     return &task_list[0];
-}
-
-
-// 初始化中断栈
-static void stack_init(void* entry,void* stack_top)
-{
-    interrupt_stack_frame* stack = stack_top - sizeof(interrupt_stack_frame);
-    stack->ret = (u32)interrupt_handler_ret_0x20;  //需要使用取地址符号 外部声明是u32函数会被当作变量
-    stack->vector = 0x20;
-    stack->ebp = (u32)stack_top;
-    stack->esp = (u32)&stack->eip;    //IA32中此值被忽略
-    stack->eip = (u32)entry;
-    stack->cs = KERNEL_CODE_SELECTOR;
-    stack->eflags= 582;
 }
 
 static void clock_int(int vector)
@@ -55,7 +44,10 @@ void schedule()
     if(process_num > 1 && running->pid == 0)
         goto next_task;
 
-    struct mm_struct* mm = &running->mm;
+    if(back_task == running)
+        return;
+
+    struct mm_struct* mm = running->mm;
 
     // 如果中断涉及DPL改变 会使用ss0 esp0替换
     if(running->dpl != 0)
@@ -78,8 +70,10 @@ void task_init()
     task_list[0].next = &task_list[0];  // 循环链表 自己指向自己
     task_list[0].dpl = 0;
 
+    task_list[0].mm = &root_mm;
+
     // 内存描述符初始化
-    init_mm_struct(&task_list[0].mm);
+    init_mm_struct(task_list[0].mm);
 
     process_num++;
     running = &task_list[0];
@@ -96,6 +90,20 @@ void task_init()
     set_interrupt_mask(0,1);    // 允许时钟中断
 
     LOG("load kernel task at pid 0\n");
+}
+
+
+// 初始化中断栈
+static void stack_init(void* entry,void* stack_top)
+{
+    interrupt_stack_frame* stack = stack_top - sizeof(interrupt_stack_frame);
+    stack->ret = (u32)interrupt_handler_ret_0x20;  //需要使用取地址符号 外部声明是u32函数会被当作变量
+    stack->vector = 0x20;
+    stack->ebp = (u32)stack_top;
+    stack->esp = (u32)&stack->eip;    //IA32中此值被忽略
+    stack->eip = (u32)entry;
+    stack->cs = KERNEL_CODE_SELECTOR;
+    stack->eflags= 582;
 }
 
 // 创建内核任务 需要提供程序入口
@@ -131,8 +139,7 @@ task_t* task_create(void *entry) {
     new_task->ebp = (u32)stack_top;
 
     //与主进程共享cr3
-    new_task->mm.pte = task_list[0].mm.pte;
-
+    new_task->mm = task_list[0].mm;
 
     new_task->dpl = 0;    // 内核态
     //new_task->mm.kernel_stack = get_page(); //陷入内核态时堆栈
@@ -143,7 +150,6 @@ task_t* task_create(void *entry) {
 
     set_interrupt_state(1); //  任务创建完毕
     return &task_list[task_idx];
-
 
     fail:
     panic("Have Some Error in Task Create"); // 这个地方理论上不会发生 如果发生那么就是未知错误
@@ -172,7 +178,7 @@ void task_exit()
    schedule();
 }
 
-//只允许内核调用一次
+//创建用户态进程
 pid_t create_user_mode_task(void* entry)
 {
     set_interrupt_state(0); // 保证原子操作 否则可能会调度出错
@@ -221,7 +227,7 @@ set_process:
     new_task->ebp = (u32)stack_top;
 
     // 复制当前任务的页表
-    fork_mm_struct(&new_task->mm,&running->mm);
+    fork_mm_struct(new_task->mm,running->mm);
     new_task->dpl = 3;    //用户态
 
     running->next = new_task;
@@ -263,7 +269,7 @@ pid_t kernel_clone(struct kernel_clone_args* args)
     memcpy(child,running,sizeof(pcb_t));
 
     // 取出内存结构
-    struct mm_struct *mm = &child->mm;
+    struct mm_struct *mm = child->mm;
 
     //设置pid
     child->pid = pid_total++;
@@ -273,7 +279,7 @@ pid_t kernel_clone(struct kernel_clone_args* args)
     if (args->flags & CLONE_PTE)
     {
         // 拷贝页表 不是共享（写时复制基础）
-        fork_mm_struct(&child->mm,&father->mm);
+        fork_mm_struct(child->mm,father->mm);
     }
 
     return child->pid;

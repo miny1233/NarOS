@@ -26,7 +26,7 @@ typedef struct pcb_t
     //特权级状态
     u8 dpl; // 特权级
     // 内存
-    struct mm_struct mm;
+    struct mm_struct* mm;
 } pcb_t;
 
 typedef pcb_t task_t;   //task_t 与 pcb_t 都是进程控制块

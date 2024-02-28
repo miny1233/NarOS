@@ -75,7 +75,8 @@ void memory_init()
     //内存状态的检测
     LOG("total mem size is %d MB\n",device_info->mem_upper >> 10);
 
-    if (!(device_info->flags & (1 << 6)))panic("Cannot Scan Memory!");
+    if (!(device_info->flags & (1 << 6)))
+        panic("Cannot Scan Memory!");
 
     multiboot_memory_map_t *mmap;
     LOG("mmap_addr = 0x%x, mmap_length = 0x%x\n",(unsigned) device_info->mmap_addr, (unsigned) device_info->mmap_length);
@@ -133,6 +134,7 @@ static void* get_page()
         if(page_map[index] == 0)
         {
             page_map[index] = 1;
+            printk("get page 0x%x\n",PAGE(index));
             return PAGE(index);
         }
     }
@@ -149,12 +151,10 @@ static void put_page(void* addr)
     page_map[index]--;  // 内存引用次数减少
 }
 
-// 带记录内存位图的页获取
-static void* recorded_get_page(struct mm_struct* mm)
+// 标记使用的内存
+static void* recorde_used_page(struct mm_struct* mm,void* paddr)
 {
-    void* ptr = get_page();
-    if(ptr == NULL)
-        return NULL;
+    void* ptr = paddr;
 
     //记录使用的内存
     bitmap_set((u8*)mm->pm_bitmap,IDX(ptr),1);
@@ -167,7 +167,7 @@ int init_mm_struct(struct mm_struct* mm)
     page_entry_t* self = mm->pte + DIDX(PDE_MASK);
     entry_init(self, IDX(mm->pte));
     //堆内存初始化
-    mm->brk = (void*)KERNEL_VMA_START;
+    mm->brk = (void*) KERNEL_VMA_START;
     mm->sbrk = mm->brk;
 
     memset(mm->pm_bitmap,0,sizeof (mm->pm_bitmap));
@@ -198,7 +198,6 @@ struct page_error_code_t
     u16 reserved2;
 }__attribute__((packed)) page_error_code_t;
 
-
 // 缺页中断
 static void page_int(int vector,
                      u32 edi, u32 esi, u32 ebp, u32 esp,
@@ -221,10 +220,10 @@ static void page_int(int vector,
     struct mm_struct* mm = NULL;
     if(running->dpl == 0) {
         //内核任务共享描述符
-        mm = &get_root_task()->mm;
+        mm = get_root_task()->mm;
     }
     else {
-        mm = &running->mm;
+        mm = running->mm;
     }
 
     //检查是否在堆内存
@@ -242,27 +241,33 @@ check_passed:
         //缺少页表
         if(page_table_fir->present == 0)
         {
-            page_entry_t* page_table_sec = recorded_get_page(mm);
+            page_entry_t* page_table_sec = get_page();
             if(page_table_sec == NULL)
                 goto fault;
 
             entry_init(page_table_fir,IDX(page_table_sec));
+
+            recorde_used_page(mm,page_table_sec);
         }
         // 初始化页表
         page_entry_t* page_table_sec = get_pte(vaddr,mm);
         flush_tlb(page_table_sec);
 
-        memset(page_table_sec,0,PAGE_SIZE);
+        // 大坑，之前每次都擦除一遍页表
+        if(page_table_fir->present == 0)
+            memset(page_table_sec,0,PAGE_SIZE);
 
         page_table_sec += TIDX(vaddr);
 
         //分配物理内存
-        void* pm = recorded_get_page(mm);
+        void* pm = get_page();
         if(pm == NULL)
             goto fault;
 
         entry_init(page_table_sec, IDX(pm));
         flush_tlb(vaddr);
+
+        recorde_used_page(mm,pm);
         goto ok;
     }
     else if (code->write)
@@ -328,7 +333,8 @@ int add_mmap(void* vma,struct mm_struct* mm)
 void* kernel_sbrk(u32 size)
 {
     void* ptr = NULL;
-    struct mm_struct* mm = &get_root_task()->mm;
+    struct mm_struct* mm = get_root_task()->mm;
+
     //不在有效的虚拟内存范围
     if((u32)mm->sbrk < KERNEL_VMA_START || (u32)mm->sbrk > KERNEL_VMA_END)
         return NULL;
