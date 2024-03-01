@@ -17,14 +17,20 @@ u32 total_page;
 #define IDX(addr) ((u32)(addr) >> 12) // 取页索引
 #define PAGE(idx) ((void*)((u32)(idx) << 12))  // 取页启始
 
+#define PDE_MASK 0xFFC00000
+
 #define PTE_SIZE (PAGE_SIZE/sizeof(page_entry_t))
 
 #define KERNEL_MEM_SPACE (0xE00000ULL) // 16MB 内核专用内存 (内核代码段 与 数据段) 内存分配时绕过这块物理内存
 #define KERNEL_VMA_START (0x2000000ULL)
 #define USER_VMA_START  (0x40000000ULL) // 用户态 VMA 开始地址 1GB
+#define USER_VMA_END (PDE_MASK << 10)
 #define KERNEL_VMA_END USER_VMA_START
 
-#define PDE_MASK 0xFFC00000
+#define HEAP_START USER_VMA_START;
+
+#define KERNEL_DPL 0
+#define USER_DPL 3
 
 // 内存引用计数 4kb对齐 从0开始
 u8* page_map;
@@ -58,12 +64,12 @@ static void enable_page()   // 启用分页
 }
 
 // 初始化页表项
-static void entry_init(page_entry_t *entry, u32 index)
+static void entry_init(page_entry_t *entry, u32 index ,char dpl)
 {
     *(u32 *)entry = 0;
     entry->present = 1;
     entry->write = 1;
-    entry->user = 1;    // 超级用户
+    entry->user = dpl;    // 超级用户
     entry->index = index;
 }
 
@@ -161,13 +167,14 @@ static void* recorde_used_page(struct mm_struct* mm,void* paddr)
     return ptr;
 }
 
+//内核内存描述符初始化
 int init_mm_struct(struct mm_struct* mm)
 {
     mm->pte = get_cr3();
     page_entry_t* self = mm->pte + DIDX(PDE_MASK);
-    entry_init(self, IDX(mm->pte));
+    entry_init(self, IDX(mm->pte) ,KERNEL_DPL);
     //堆内存初始化
-    mm->brk = (void*) KERNEL_VMA_START;
+    mm->brk = (void*) HEAP_START;
     mm->sbrk = mm->brk;
 
     memset(mm->pm_bitmap,0,sizeof (mm->pm_bitmap));
@@ -245,7 +252,7 @@ check_passed:
             if(page_table_sec == NULL)
                 goto fault;
 
-            entry_init(page_table_fir,IDX(page_table_sec));
+            entry_init(page_table_fir,IDX(page_table_sec),KERNEL_DPL);
 
             recorde_used_page(mm,page_table_sec);
         }
@@ -264,7 +271,7 @@ check_passed:
         if(pm == NULL)
             goto fault;
 
-        entry_init(page_table_sec, IDX(pm));
+        entry_init(page_table_sec, IDX(pm), running->dpl == 0 ? KERNEL_DPL : USER_DPL);
         flush_tlb(vaddr);
 
         recorde_used_page(mm,pm);
@@ -310,10 +317,10 @@ static void kernel_pte_init()
 
         memset(pte, 0, PAGE_SIZE);
 
-        entry_init(&page_table[i], IDX((u32) pte));   // 页目录0->内核页表
+        entry_init(&page_table[i], IDX((u32) pte),KERNEL_DPL);   // 页目录0->内核页表
         for (u32 index = 0; index < PAGE_SIZE / 4; index++)
         {
-            entry_init(&pte[index], offset++);   // 映射物理内存在原来的位置
+            entry_init(&pte[index], offset++,KERNEL_DPL);   // 映射物理内存在原来的位置
         }
     }
 
@@ -323,23 +330,13 @@ static void kernel_pte_init()
     set_cr3(page_table); // cr3指向页目录
     enable_page();
 }
-// 只能映射4k对齐的页面
-int add_mmap(void* vma,struct mm_struct* mm)
-{
 
-    return 0;
-}
-
-void* kernel_sbrk(u32 size)
+void* sbrk(u32 size)
 {
     void* ptr = NULL;
     struct mm_struct* mm = get_root_task()->mm;
 
-    //不在有效的虚拟内存范围
-    if((u32)mm->sbrk < KERNEL_VMA_START || (u32)mm->sbrk > KERNEL_VMA_END)
-        return NULL;
-
-    if(mm->sbrk + size < (void*)KERNEL_VMA_END)
+    if(mm->sbrk + size < (void*) USER_VMA_END)
     {
         ptr = mm->sbrk;
         mm->sbrk += size;
@@ -351,7 +348,7 @@ void* kernel_sbrk(u32 size)
 // 分配内核态内存
 void* alloc_page(int page)
 {
-    return kernel_sbrk(page * PAGE_SIZE);
+    return sbrk(page * PAGE_SIZE);
 }
 
 int fork_mm_struct(struct mm_struct* child,struct mm_struct* father)
@@ -395,5 +392,3 @@ int fork_mm_struct(struct mm_struct* child,struct mm_struct* father)
     }
     return 0;
 }
-
-// void sys_mmap(void* addr,void* vaddr) {}

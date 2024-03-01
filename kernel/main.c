@@ -50,7 +50,7 @@ int init(unsigned long magic, multiboot_info_t* _info)
     int *ptr = NULL;
     ptr = alloc_page(1000);
     printk("stack_start: %x\n",ptr);
-    for(int i = 0; i < 3;i++)
+    for(int i = 0; i < 300;i++)
     {
         *ptr = 0x1023;
         ptr += 4096;
