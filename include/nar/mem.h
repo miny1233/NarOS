@@ -53,7 +53,7 @@ struct mm_struct{
     void* brk;  //堆内存起点
     void* sbrk; //堆内存终点
 
-    char pm_bitmap[BITMAP_SIZE]; //物理内存使用位图
+    u8* pm_bitmap; //物理内存使用位图
 };
 //给任务0的内存描述符初始化
 int init_mm_struct(struct mm_struct* mm);

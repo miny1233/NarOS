@@ -18,16 +18,17 @@ u32 total_page;
 #define PAGE(idx) ((void*)((u32)(idx) << 12))  // 取页启始
 
 #define PDE_MASK 0xFFC00000
+#define BITMAP_MASK 0xFFB00000 //专为内存位图设计的内存位置
 
 #define PTE_SIZE (PAGE_SIZE/sizeof(page_entry_t))
 
 #define KERNEL_MEM_SPACE (0xE00000ULL) // 16MB 内核专用内存 (内核代码段 与 数据段) 内存分配时绕过这块物理内存
 #define KERNEL_VMA_START (0x2000000ULL)
 #define USER_VMA_START  (0x40000000ULL) // 用户态 VMA 开始地址 1GB
-#define USER_VMA_END (PDE_MASK << 10)
+#define USER_VMA_END (BITMAP_MASK << 10)
 #define KERNEL_VMA_END USER_VMA_START
 
-#define HEAP_START USER_VMA_START;
+#define HEAP_START USER_VMA_START
 
 #define KERNEL_DPL 0
 #define USER_DPL 3
@@ -160,11 +161,9 @@ static void put_page(void* addr)
 // 标记使用的内存
 static void* recorde_used_page(struct mm_struct* mm,void* paddr)
 {
-    void* ptr = paddr;
-
     //记录使用的内存
-    bitmap_set((u8*)mm->pm_bitmap,IDX(ptr),1);
-    return ptr;
+    bitmap_set(mm->pm_bitmap,IDX(paddr),1);
+    return paddr;
 }
 
 //内核内存描述符初始化
@@ -177,7 +176,8 @@ int init_mm_struct(struct mm_struct* mm)
     mm->brk = (void*) HEAP_START;
     mm->sbrk = mm->brk;
 
-    memset(mm->pm_bitmap,0,sizeof (mm->pm_bitmap));
+
+    memset(mm->pm_bitmap,0,BITMAP_SIZE);
     return 0;
 }
 
@@ -331,26 +331,40 @@ static void kernel_pte_init()
     enable_page();
 }
 
-void* sbrk(u32 size)
+//推动堆指针
+void* sbrk(u32 increase)
 {
     void* ptr = NULL;
     struct mm_struct* mm = get_root_task()->mm;
 
-    if(mm->sbrk + size < (void*) USER_VMA_END)
+    if(mm->sbrk + increase < (void*) USER_VMA_END)
     {
         ptr = mm->sbrk;
-        mm->sbrk += size;
+        mm->sbrk += increase;
     }
 
     return ptr;
 }
 
-// 分配内核态内存
+// 按页分配内存
 void* alloc_page(int page)
 {
     return sbrk(page * PAGE_SIZE);
 }
 
+//为新进程创建独立的内存描述
+struct mm_struct* create_mm_struct()
+{
+    struct mm_struct* des = get_page();
+
+    des->pte = get_page();
+    des->sbrk = (void *)HEAP_START;
+    des->pm_bitmap = (void *)(BITMAP_MASK << 10);
+
+    return 0;
+}
+
+//为fork准备的内存描述复制
 int fork_mm_struct(struct mm_struct* child,struct mm_struct* father)
 {
     child->pte = get_page();
