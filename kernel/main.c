@@ -47,16 +47,6 @@ int init(unsigned long magic, multiboot_info_t* _info)
     //create_user_mode_task(child);
     //create_user_mode_task(child);
 
-    int *ptr = NULL;
-    ptr = alloc_page(1000);
-    printk("stack_start: %x\n",ptr);
-    for(int i = 0; i < 300;i++)
-    {
-        *ptr = 0x1023;
-        ptr += 4096;
-    }
-    printk("stack_start: %x\n",*ptr);
-
     //初始化完毕，初始化程序变idle程序
     return 0;
 }

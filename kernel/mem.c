@@ -23,12 +23,13 @@ u32 total_page;
 #define PTE_SIZE (PAGE_SIZE/sizeof(page_entry_t))
 
 #define KERNEL_MEM_SPACE (0xE00000ULL) // 16MB 内核专用内存 (内核代码段 与 数据段) 内存分配时绕过这块物理内存
-#define KERNEL_VMA_START (0x2000000ULL)
+
+#define KERNEL_SHARDED_VMA_START (0x0);
+#define KERNEL_SHARED_VMA_END (0xE00000ULL); // 16MB 数据共享内核空间 共享的数据只能通过申请在数据段上
+#define KERNEL_PRIVATE_VMA_START (0x2000000ULL)
 #define USER_VMA_START  (0x40000000ULL) // 用户态 VMA 开始地址 1GB
 #define USER_VMA_END (BITMAP_MASK << 10)
-#define KERNEL_VMA_END USER_VMA_START
-
-#define HEAP_START USER_VMA_START
+#define KERNEL_PRIVATE_VMA_END USER_VMA_START
 
 #define KERNEL_DPL 0
 #define USER_DPL 3
@@ -162,7 +163,7 @@ static void put_page(void* addr)
 static void* recorde_used_page(struct mm_struct* mm,void* paddr)
 {
     //记录使用的内存
-    bitmap_set(mm->pm_bitmap,IDX(paddr),1);
+    //bitmap_set(mm->pm_bitmap,IDX(paddr),1);
     return paddr;
 }
 
@@ -173,11 +174,14 @@ int init_mm_struct(struct mm_struct* mm)
     page_entry_t* self = mm->pte + DIDX(PDE_MASK);
     entry_init(self, IDX(mm->pte) ,KERNEL_DPL);
     //堆内存初始化
-    mm->brk = (void*) HEAP_START;
+    mm->brk = (void*) USER_VMA_START;
     mm->sbrk = mm->brk;
+    //内核态堆
+    mm->kbrk = (void*) KERNEL_PRIVATE_VMA_START;
 
-
-    memset(mm->pm_bitmap,0,BITMAP_SIZE);
+    //分配4K虚拟空间给内核栈
+    mm->kernel_stack_start = mm->kbrk += PAGE_SIZE;
+    //memset(mm->pm_bitmap,0,BITMAP_SIZE);
     return 0;
 }
 
@@ -332,7 +336,7 @@ static void kernel_pte_init()
 }
 
 //推动堆指针
-void* sbrk(u32 increase)
+void* sbrk(int increase)
 {
     void* ptr = NULL;
     struct mm_struct* mm = get_root_task()->mm;
@@ -346,22 +350,24 @@ void* sbrk(u32 increase)
     return ptr;
 }
 
-// 按页分配内存
-void* alloc_page(int page)
+void* kbrk(int increase)
 {
-    return sbrk(page * PAGE_SIZE);
+    void* ptr = NULL;
+    struct mm_struct* mm = get_root_task()->mm;
+
+    if(mm->kbrk + increase < (void*) USER_VMA_START)
+    {
+        ptr = mm->kbrk;
+        mm->kbrk += increase;
+    }
+
+    return ptr;
 }
 
-//为新进程创建独立的内存描述
-struct mm_struct* create_mm_struct()
+// 按页分配内存
+void* kalloc_page(int page)
 {
-    struct mm_struct* des = get_page();
-
-    des->pte = get_page();
-    des->sbrk = (void *)HEAP_START;
-    des->pm_bitmap = (void *)(BITMAP_MASK << 10);
-
-    return 0;
+    return kbrk(page * PAGE_SIZE);
 }
 
 //为fork准备的内存描述复制

@@ -11,8 +11,11 @@
 task_t *running;        // 当前运行的任务
 
 size_t process_num = 0; // 运行任务数
+
+// 任务切换时要用到的数据都需要放入共享内存区
 task_t task_list[MAX_TASK_NUM];  // 任务列表 所有任务在这里统一管理
-struct mm_struct root_mm;   //根任务内存描述符
+struct mm_struct mm_list[MAX_TASK_NUM];   //根任务内存描述符
+
 pid_t pid_total = 0;
 
 extern tss_t tss;
@@ -70,7 +73,7 @@ void task_init()
     task_list[0].next = &task_list[0];  // 循环链表 自己指向自己
     task_list[0].dpl = 0;
 
-    task_list[0].mm = &root_mm;
+    task_list[0].mm = &mm_list[0];
 
     // 内存描述符初始化
     init_mm_struct(task_list[0].mm);
@@ -115,7 +118,7 @@ task_t* task_create(void *entry) {
     set_interrupt_state(0); // 保证原子操作 否则可能会调度出错
 
     // 为新任务设置内存
-    void* stack_top = alloc_page(1) + PAGE_SIZE;  // 栈顶
+    void* stack_top = sbrk(PAGE_SIZE) + PAGE_SIZE;  // 栈顶
     stack_init(entry,stack_top);
 
     u32 task_idx;
@@ -185,7 +188,7 @@ pid_t create_user_mode_task(void* entry)
     if(process_num > MAX_TASK_NUM) // 任务是否超过最大限度
         goto fail;
     // 为新任务设置内存
-    void* stack_top = alloc_page(1) + PAGE_SIZE;  // 栈顶
+    void* stack_top = sbrk(PAGE_SIZE) + PAGE_SIZE;  // 栈顶
     // ROP技术
     interrupt_stack_frame* stack = stack_top - sizeof(interrupt_stack_frame);
 

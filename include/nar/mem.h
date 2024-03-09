@@ -30,7 +30,10 @@ void memory_init();
 void* get_cr3();
 void set_cr3(void* pde);
 
-void* alloc_page(int page);
+void* sbrk(int);
+void* kbrk(int);
+
+void* kalloc_page(int page);
 
 //为mmap预留
 struct vm_area_struct{
@@ -48,12 +51,14 @@ struct mm_struct{
     page_entry_t* pte; // 页目录地址
     struct vm_area_struct* mmap; // vma
 
-    void* kernel_stack_start; //陷入内核态时的栈地址
+    void* kernel_stack_start; // 陷入内核态时的栈地址
+
+    void* kbrk; // 内核态非共享内存堆
 
     void* brk;  //堆内存起点
     void* sbrk; //堆内存终点
 
-    u8* pm_bitmap; //物理内存使用位图
+    //u8* pm_bitmap; //物理内存使用位图 （暂时不记录，虽然会内存泄漏）
 };
 //给任务0的内存描述符初始化
 int init_mm_struct(struct mm_struct* mm);
