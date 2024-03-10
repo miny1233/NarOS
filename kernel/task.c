@@ -29,6 +29,23 @@ task_t* get_root_task()
     return &task_list[0];
 }
 
+static pcb_t* get_empty_pcb()
+{
+    int task_idx;
+    pcb_t *new_task = NULL;
+
+    for(task_idx=1;task_idx < MAX_TASK_NUM;task_idx++)
+    {
+        if(task_list[task_idx].pid == 0)    //无任务
+        {
+            new_task = &task_list[task_idx];
+            break;
+        }
+    }
+
+    return new_task;
+}
+
 static void clock_int(int vector)
 {
     assert(vector == 0x20);
@@ -209,7 +226,7 @@ pid_t create_user_mode_task(void* entry)
     stack->esp3 = (u32)stack_top;
 
     //stack->eflags=582;
-    stack->eflags=(0 << 12 | 0b10 | 1 << 9);
+    stack->eflags = (0 << 12 | 0b10 | 1 << 9);
 
     u32 task_idx;
     pcb_t* new_task;
@@ -230,7 +247,12 @@ set_process:
     new_task->ebp = (u32)stack_top;
 
     // 复制当前任务的页表
-    fork_mm_struct(new_task->mm,running->mm);
+    //fork_mm_struct(new_task->mm,running->mm);
+    //new_task->mm->kernel_stack_start = new_task->mm->kbrk += PAGE_SIZE;
+
+    new_task->mm = get_root_task()->mm;
+    //new_task->mm->kernel_stack_start;
+
     new_task->dpl = 3;    //用户态
 
     running->next = new_task;
@@ -242,23 +264,6 @@ set_process:
 
 fail:
     return -1;
-}
-
-static pcb_t* get_empty_pcb()
-{
-    int task_idx;
-    pcb_t *new_task = NULL;
-
-    for(task_idx=1;task_idx < MAX_TASK_NUM;task_idx++)
-    {
-        if(task_list[task_idx].pid == 0)    //无任务
-        {
-            new_task = &task_list[task_idx];
-            break;
-        }
-    }
-
-    return new_task;
 }
 
 pid_t kernel_clone(struct kernel_clone_args* args)

@@ -51,7 +51,7 @@ struct mm_struct{
     page_entry_t* pte; // 页目录地址
     struct vm_area_struct* mmap; // vma
 
-    void* kernel_stack_start; // 陷入内核态时的栈地址
+    char kernel_stack_start[4096]; // 陷入内核态时的栈地址
 
     void* kbrk; // 内核态非共享内存堆
 

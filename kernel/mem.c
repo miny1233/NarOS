@@ -179,8 +179,8 @@ int init_mm_struct(struct mm_struct* mm)
     //内核态堆
     mm->kbrk = (void*) KERNEL_PRIVATE_VMA_START;
 
-    //分配4K虚拟空间给内核栈
-    mm->kernel_stack_start = mm->kbrk += PAGE_SIZE;
+    // 内核栈必须立即分配
+    //mm->kernel_stack_start = mm->kbrk += PAGE_SIZE;
     //memset(mm->pm_bitmap,0,BITMAP_SIZE);
     return 0;
 }
@@ -225,7 +225,7 @@ static void page_int(int vector,
 
     //用户态态故障 且 访问内存位置不合法
     if (running->dpl == 3 && (u32)vaddr < USER_VMA_START)
-        goto fault;
+        goto segment_error;
 
     //取出内存描述符 并检查合法性
     struct mm_struct* mm = NULL;

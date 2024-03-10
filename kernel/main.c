@@ -42,21 +42,20 @@ int init(unsigned long magic, multiboot_info_t* _info)
     set_interrupt_mask(1,1); //启动键盘中断
 
     LOG("start child proc!\n");
-    task_create(child);
-    LOG("over");
+    //task_create(child);
+    create_user_mode_task(child);
+    LOG("over\n");
     //create_user_mode_task(child);
-    //create_user_mode_task(child);
-
     //初始化完毕，初始化程序变idle程序
     return 0;
 }
 
 void child()
 {
-    while(1);
+    //while(1);
     int i = 1;
     while(i--)
         printk("%d i am child!\n",i); // 用户态不能使用printk
-        while(1);
+        //while(1);
     task_exit();
 }
