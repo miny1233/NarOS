@@ -76,7 +76,6 @@ void schedule()
     // 是否需要切换页目录
     if(get_cr3() != mm->pte)
         set_cr3(mm->pte);
-    // 一般情况下页表是不会改变的 所以无需保存
 
     context_switch(back_task, running);
 }

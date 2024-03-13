@@ -52,8 +52,7 @@ struct mm_struct{
     struct vm_area_struct* mmap; // vma
 
     char kernel_stack_start[4096]; // 陷入内核态时的栈地址
-
-    void* kbrk; // 内核态非共享内存堆
+    //void* kbrk; // 内核态非共享内存堆
 
     void* brk;  //堆内存起点
     void* sbrk; //堆内存终点

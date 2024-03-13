@@ -24,10 +24,8 @@ u32 total_page;
 
 #define KERNEL_MEM_SPACE (0xE00000ULL) // 16MB 内核专用内存 (内核代码段 与 数据段) 内存分配时绕过这块物理内存
 
-#define KERNEL_SHARDED_VMA_START (0x0);
-#define KERNEL_SHARED_VMA_END (0xE00000ULL); // 16MB 数据共享内核空间 共享的数据只能通过申请在数据段上
-#define KERNEL_PRIVATE_VMA_START (0x2000000ULL)
-#define USER_VMA_START  (0x40000000ULL) // 用户态 VMA 开始地址 1GB
+#define KERNEL_HEAP_VMA_START ((void*)0x2000000ULL)
+#define USER_VMA_START  ((void*)0x40000000ULL) // 用户态 VMA 开始地址 1GB
 #define USER_VMA_END (BITMAP_MASK << 10)
 #define KERNEL_PRIVATE_VMA_END USER_VMA_START
 
@@ -38,6 +36,8 @@ u32 total_page;
 u8* page_map;
 
 page_entry_t* page_table;  // 页目录
+
+static void* ksbrk = KERNEL_HEAP_VMA_START;
 
 void flush_tlb(void* vaddr)
 {
@@ -71,7 +71,14 @@ static void entry_init(page_entry_t *entry, u32 index ,char dpl)
     *(u32 *)entry = 0;
     entry->present = 1;
     entry->write = 1;
-    entry->user = dpl;    // 超级用户
+    if (KERNEL_DPL == dpl)
+    {
+        entry->user = 0;
+        entry->global = 1;
+    } else{
+        entry->user = 1;
+    }
+
     entry->index = index;
 }
 
@@ -176,12 +183,7 @@ int init_mm_struct(struct mm_struct* mm)
     //堆内存初始化
     mm->brk = (void*) USER_VMA_START;
     mm->sbrk = mm->brk;
-    //内核态堆
-    mm->kbrk = (void*) KERNEL_PRIVATE_VMA_START;
 
-    // 内核栈必须立即分配
-    //mm->kernel_stack_start = mm->kbrk += PAGE_SIZE;
-    //memset(mm->pm_bitmap,0,BITMAP_SIZE);
     return 0;
 }
 
@@ -353,12 +355,11 @@ void* sbrk(int increase)
 void* kbrk(int increase)
 {
     void* ptr = NULL;
-    struct mm_struct* mm = get_root_task()->mm;
 
-    if(mm->kbrk + increase < (void*) USER_VMA_START)
+    if(ksbrk + increase < (void*) USER_VMA_START)
     {
-        ptr = mm->kbrk;
-        mm->kbrk += increase;
+        ptr = ksbrk;
+        ksbrk += increase;
     }
 
     return ptr;
