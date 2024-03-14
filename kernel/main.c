@@ -52,7 +52,9 @@ int init(unsigned long magic, multiboot_info_t* _info)
 void child()
 {
     //while(1);
-    void *ptr = __builtin_frob_return_addr(child);
+    //void *ptr = __builtin_frob_return_addr(child);
+    asm("mov $0,%eax\n"
+        "int $0x80\n");
     while(1);
 
     task_exit();

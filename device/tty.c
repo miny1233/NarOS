@@ -15,7 +15,7 @@ u32 width;
 
 static inline void sync_cursor()
 {
-    return;
+    //return;
     u16 pos = high * 80 + width;
     outb(CRT_ADDR_LINE,CRT_CURSOR_L);
     outb(CRT_DATA_LINE,pos);

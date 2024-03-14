@@ -322,6 +322,8 @@ check_passed:
         //panic("write read-only mem\n");
     }
 
+    goto fault;
+
 ok:
     flush_tlb(vaddr);
     return;
