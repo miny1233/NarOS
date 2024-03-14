@@ -27,7 +27,7 @@ u32 total_page;
 #define KERNEL_HEAP_VMA_START ((void*)0x2000000ULL)
 #define USER_VMA_START  ((void*)0x40000000ULL) // 用户态 VMA 开始地址 1GB
 #define USER_VMA_END (BITMAP_MASK << 10)
-#define KERNEL_PRIVATE_VMA_END USER_VMA_START
+#define KERNEL_HEAP_VMA_END USER_VMA_START
 
 #define KERNEL_DPL 0
 #define USER_DPL 3
@@ -54,15 +54,48 @@ void* get_cr2()
 void* get_cr3(){
     asm volatile("movl %cr3,%eax\n");
 }
+
 void set_cr3(void* pde){
     asm volatile("movl %%eax,%%cr3\n"::"a"(pde));
 }
+
 static void enable_page()   // 启用分页
 {
     asm volatile(
             "movl %cr0, %eax\n"
             "orl $0x80000000, %eax\n"
             "movl %eax, %cr0\n");
+}
+
+// 获取虚拟地址 vaddr 对应的页表
+static page_entry_t *get_pte(void* vaddr)
+{
+    u32 idx = DIDX(vaddr);
+
+    page_entry_t *table = (page_entry_t *)(PDE_MASK | (idx << 12));
+
+    return table;
+}
+
+page_entry_t *get_entry(void* vaddr)
+{
+    page_entry_t *pte = get_pte(vaddr);
+    return &pte[TIDX(vaddr)];
+}
+
+// 获取当前空间下虚拟地址 vaddr 对应的物理地址
+void* get_paddr(void* vaddr)
+{
+    page_entry_t *pde = running->mm->pde;
+    page_entry_t *entry = &pde[DIDX(vaddr)];
+    if (!entry->present)
+        return 0;
+
+    entry = get_entry(vaddr);
+    if (!entry->present)
+        return 0;
+
+    return (void*)((u32)PAGE(entry->index) | ((u32)vaddr & 0xfff));
 }
 
 // 初始化页表项
@@ -141,7 +174,7 @@ void memory_init()
     kernel_pte_init();
 }
 
-static void* get_page()
+void* get_page()
 {
     // 从memory_base开始分配内存
     for(size_t index = IDX(memory_base) ; index < total_page ; index++)
@@ -157,7 +190,7 @@ static void* get_page()
     return NULL;
 }
 
-static void put_page(void* addr)
+void put_page(void* addr)
 {
     assert((u32)addr >= memory_base && (u32)addr < memory_base + memory_size); // 内存必须在可用区域
     size_t index = IDX((u32)addr - memory_base);
@@ -177,24 +210,14 @@ static void* recorde_used_page(struct mm_struct* mm,void* paddr)
 //内核内存描述符初始化
 int init_mm_struct(struct mm_struct* mm)
 {
-    mm->pte = get_cr3();
-    page_entry_t* self = mm->pte + DIDX(PDE_MASK);
-    entry_init(self, IDX(mm->pte) ,KERNEL_DPL);
+    mm->pde = get_cr3();
+    page_entry_t* self = mm->pde + DIDX(PDE_MASK);
+    entry_init(self, IDX(mm->pde) ,KERNEL_DPL);
     //堆内存初始化
     mm->brk = (void*) USER_VMA_START;
     mm->sbrk = mm->brk;
 
     return 0;
-}
-
-// 获取虚拟地址 vaddr 对应的页表
-static page_entry_t *get_pte(void* vaddr,struct mm_struct* mm)
-{
-    u32 idx = DIDX(vaddr);
-
-    page_entry_t *table = (page_entry_t *)(PDE_MASK | (idx << 12));
-
-    return table;
 }
 
 struct page_error_code_t
@@ -211,6 +234,20 @@ struct page_error_code_t
     u16 reserved2;
 }__attribute__((packed)) page_error_code_t;
 
+// 透穿模式
+// 用于跨地址空间的写入
+static struct mm_struct* proxy_mm = NULL;
+
+void enable_rw_through(struct mm_struct* mm)
+{
+    proxy_mm = mm;
+}
+void disable_rw_through()
+{
+    proxy_mm = NULL;
+}
+
+
 // 缺页中断
 static void page_int(int vector,
                      u32 edi, u32 esi, u32 ebp, u32 esp,
@@ -226,21 +263,14 @@ static void page_int(int vector,
     LOG("fault virtual address 0x%p\n",vaddr);
 
     //用户态态故障 且 访问内存位置不合法
-    if (running->dpl == 3 && (u32)vaddr < USER_VMA_START)
+    if (running->dpl == 3 && vaddr < USER_VMA_START)
         goto segment_error;
 
-    //取出内存描述符 并检查合法性
-    struct mm_struct* mm = NULL;
-    if(running->dpl == 0) {
-        //内核任务共享描述符
-        mm = get_root_task()->mm;
-    }
-    else {
-        mm = running->mm;
-    }
+    //取出内存描述符
+    struct mm_struct* mm = proxy_mm ? proxy_mm : running->mm;
 
-    //检查是否在堆内存
-    if(vaddr >= mm->brk && vaddr < mm->sbrk)
+    //检查是否在堆内存 内核进程跳过检查
+    if(running->dpl == 0 || (vaddr >= mm->brk && vaddr < mm->sbrk))
         goto check_passed;
     //检查 virtual memory area （暂未启用）
     goto segment_error;
@@ -250,7 +280,7 @@ check_passed:
     if (!code->present)
     {
         //取出虚拟地址在页目录的表项
-        page_entry_t *page_table_fir = mm->pte + DIDX(vaddr);
+        page_entry_t *page_table_fir = mm->pde + DIDX(vaddr);
         //缺少页表
         if(page_table_fir->present == 0)
         {
@@ -263,7 +293,7 @@ check_passed:
             recorde_used_page(mm,page_table_sec);
         }
         // 初始化页表
-        page_entry_t* page_table_sec = get_pte(vaddr,mm);
+        page_entry_t* page_table_sec = get_pte(vaddr);
         flush_tlb(page_table_sec);
 
         // 大坑，之前每次都擦除一遍页表
@@ -277,7 +307,7 @@ check_passed:
         if(pm == NULL)
             goto fault;
 
-        entry_init(page_table_sec, IDX(pm), running->dpl == 0 ? KERNEL_DPL : USER_DPL);
+        entry_init(page_table_sec, IDX(pm), vaddr < USER_VMA_START ? KERNEL_DPL : USER_DPL);
         flush_tlb(vaddr);
 
         recorde_used_page(mm,pm);
@@ -285,7 +315,7 @@ check_passed:
     }
     else if (code->write)
     {
-        page_entry_t* pte = get_pte(vaddr,mm);
+        page_entry_t* pte = get_pte(vaddr);
 
         LOG("present %d\n",pte->present);
 
@@ -338,10 +368,9 @@ static void kernel_pte_init()
 }
 
 //推动堆指针
-void* sbrk(int increase)
+void* sbrk(struct mm_struct* mm,int increase)
 {
     void* ptr = NULL;
-    struct mm_struct* mm = get_root_task()->mm;
 
     if(mm->sbrk + increase < (void*) USER_VMA_END)
     {
@@ -371,16 +400,34 @@ void* kalloc_page(int page)
     return kbrk(page * PAGE_SIZE);
 }
 
+void init_user_mm_struct(struct mm_struct* mm)
+{
+    // 初始化页目录
+    void* pde_vaddr = kbrk(PAGE_SIZE);
+    // 复制内核页表
+    memcpy(pde_vaddr,get_root_task()->mm->pde,PAGE_SIZE);
+    //取得页表物理地址
+    mm->pde = get_paddr(pde_vaddr);
+
+    //为页表创建一个自身连接
+    page_entry_t* self = mm->pde + DIDX(PDE_MASK);
+    entry_init(self, IDX(mm->pde) ,KERNEL_DPL);
+
+    // 初始化堆
+    mm->sbrk = USER_VMA_START;
+    mm->brk = USER_VMA_START;
+}
+
 //为fork准备的内存描述复制
 int fork_mm_struct(struct mm_struct* child,struct mm_struct* father)
 {
-    child->pte = get_page();
-    //复制一级页表
-    memcpy(child->pte,father->pte,PAGE_SIZE);
+    child->pde = get_page();
+    //复制一级页目录
+    memcpy(child->pde,father->pde,PAGE_SIZE);
 
     // 制作页表项指针，防止写错代码
-    page_entry_t *child_pte = child->pte,
-                    *father_pte = father->pte;
+    page_entry_t *child_pte = child->pde,
+                    *father_pte = father->pde;
 
     for(u32 index=0;index < PTE_SIZE; index++)
     {
@@ -413,3 +460,5 @@ int fork_mm_struct(struct mm_struct* child,struct mm_struct* father)
     }
     return 0;
 }
+
+

@@ -30,7 +30,11 @@ void memory_init();
 void* get_cr3();
 void set_cr3(void* pde);
 
-void* sbrk(int);
+void* get_page();
+void put_page(void*);
+
+void* get_paddr(void* vaddr);
+
 void* kbrk(int);
 
 void* kalloc_page(int page);
@@ -48,7 +52,7 @@ struct vm_area_struct{
 
 //memory structure
 struct mm_struct{
-    page_entry_t* pte; // 页目录地址
+    page_entry_t* pde; // 页目录地址
     struct vm_area_struct* mmap; // vma
 
     char kernel_stack_start[4096]; // 陷入内核态时的栈地址
@@ -62,5 +66,13 @@ struct mm_struct{
 //给任务0的内存描述符初始化
 int init_mm_struct(struct mm_struct* mm);
 int fork_mm_struct(struct mm_struct* child,struct mm_struct* father);
+
+void init_user_mm_struct(struct mm_struct* mm);
+
+void* sbrk(struct mm_struct* mm,int increase);
+
+// 透穿
+void enable_rw_through(struct mm_struct* mm);
+void disable_rw_through();
 
 #endif //NAROS_MEM_H

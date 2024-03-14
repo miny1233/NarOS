@@ -65,7 +65,7 @@ void task_init();
 
 task_t* task_create(void *entry);
 
-pid_t create_user_mode_task(void* entry);
+pid_t exec(void* function,size_t len);
 
 void task_exit();
 
@@ -81,7 +81,6 @@ struct kernel_clone_args
     u32 flags;
     u32 stack_size;
 };
-
 
 // 系统调用
 void sys_yield();

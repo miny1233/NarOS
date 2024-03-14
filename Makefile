@@ -71,6 +71,7 @@ QEMU+= -drive file=$(BUILD)/nar.os,if=ide,index=0,media=disk,format=raw # 主硬
 QEMU+= -chardev stdio,mux=on,id=com1 # 字符设备 1
 QEMU+= -serial chardev:com1 # 串口 1
 QEMU+= -cdrom $(BUILD)/grub.iso # grub
+QEMU+= -d int -no-reboot -no-shutdown
 
 QEMU_DISK_BOOT:=-boot d # d:使用CD-ROM c:使用HDD
 
