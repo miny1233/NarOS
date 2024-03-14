@@ -288,7 +288,7 @@ check_passed:
             if(page_table_sec == NULL)
                 goto fault;
 
-            entry_init(page_table_fir,IDX(page_table_sec),KERNEL_DPL);
+            entry_init(page_table_fir,IDX(page_table_sec),vaddr < USER_VMA_START ? KERNEL_DPL : USER_DPL);
 
             recorde_used_page(mm,page_table_sec);
         }
@@ -308,7 +308,6 @@ check_passed:
             goto fault;
 
         entry_init(page_table_sec, IDX(pm), vaddr < USER_VMA_START ? KERNEL_DPL : USER_DPL);
-        flush_tlb(vaddr);
 
         recorde_used_page(mm,pm);
         goto ok;
@@ -319,13 +318,12 @@ check_passed:
 
         LOG("present %d\n",pte->present);
 
-        flush_tlb(vaddr);
         goto ok;
         //panic("write read-only mem\n");
     }
-    goto fault;
 
 ok:
+    flush_tlb(vaddr);
     return;
 segment_error:
     printk("segment fault!\n");

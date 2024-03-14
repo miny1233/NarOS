@@ -82,7 +82,7 @@ is_started:
 # 开始负责idle进程
 idle:
  hlt
- int $0x20
+ # int $0x20
  jmp idle
 
 /* Our stack area. */
