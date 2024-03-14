@@ -37,7 +37,6 @@ extern task_t *running; //正在运行的程序
 typedef struct {
     u32 ret;
     u32 vector;
-    u32 error;
     u32 edi;
     u32 esi;
     u32 ebp;
@@ -50,6 +49,7 @@ typedef struct {
     u32 fs;
     u32 es;
     u32 ds;
+    u32 error;
     u32 eip;
     u32 cs;
     u32 eflags;

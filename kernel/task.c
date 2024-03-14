@@ -232,10 +232,11 @@ pid_t exec(void* function,size_t len)
     assert(len <= PAGE_SIZE);
     void* entry = copy_to_mm_space(child_mm,code_segment_begin,function,len);
 
-    // 为新任务设置内存
-    void* stack_top = sbrk(child_mm,PAGE_SIZE) + PAGE_SIZE;  // 栈顶
+    // 为用户态程序创建ROP栈 注意需要使用透传
+    void* stack_top = sbrk(child_mm,PAGE_SIZE);  // 栈顶
     // ROP技术
-    interrupt_stack_frame* stack = stack_top - sizeof(interrupt_stack_frame);
+    interrupt_stack_frame temp_stack;
+    interrupt_stack_frame* stack = &temp_stack;
 
     stack->ret = (u32) interrupt_handler_ret_0x20;  //需要使用取地址符号 外部声明是u32函数会被当作变量
     stack->vector = 0x20;
@@ -245,7 +246,7 @@ pid_t exec(void* function,size_t len)
 
     //设置段寄存器
     stack->cs = USER_CODE_SELECTOR;
-    stack->gs = 0;
+    stack->gs = USER_DATA_SELECTOR;
     stack->ds = USER_DATA_SELECTOR;
     stack->es = USER_DATA_SELECTOR;
     stack->fs = USER_DATA_SELECTOR;
@@ -255,6 +256,8 @@ pid_t exec(void* function,size_t len)
 
     //stack->eflags=582;
     stack->eflags = (0 << 12 | 0b10 | 1 << 9);
+
+    copy_to_mm_space(child_mm,stack_top - sizeof(interrupt_stack_frame),stack,sizeof(interrupt_stack_frame));
 
     // 设置进程信息
     new_task->pid = ++pid_total;
