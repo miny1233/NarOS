@@ -12,6 +12,7 @@
 #include <nar/multiboot.h>
 #include <nar/globa.h>
 #include <nar/fs/vfs.h>
+#include <syscall.h>
 
 void child();
 multiboot_info_t* device_info;
@@ -54,8 +55,13 @@ void child()
     //while(1);
     //void *ptr = __builtin_frob_return_addr(child);
     //*(u32*)ptr = 1;
-    asm("mov $123,%eax\n"
-        "int $0x80\n");
+    for(;;)
+    {
+        char str[] = "hi\n";
+        u32 ret;
+        _syscall1(0,ret,&str);
+    }
+
     while(1);
 
     task_exit();

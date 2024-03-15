@@ -5,7 +5,6 @@
 #include <nar/panic.h>
 #include <type.h>
 #include <nar/task.h>
-#include <nar/syscall.h>
 
 #define PIC_M_CTRL 0x20 // 主片的控制端口
 #define PIC_M_DATA 0x21 // 主片的数据端口
