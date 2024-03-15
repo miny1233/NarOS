@@ -322,7 +322,7 @@ check_passed:
         //panic("write read-only mem\n");
     }
 
-    goto fault;
+    goto segment_error;
 
 ok:
     flush_tlb(vaddr);

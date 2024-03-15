@@ -1,5 +1,8 @@
 #include <type.h>
 
-// 系统调用表
-extern void* syscall_list[];
+inline u32 syscall_arg_0(int sys_num)
+{
+    asm("mov");
+}
+
 

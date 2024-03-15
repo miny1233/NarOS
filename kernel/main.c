@@ -53,7 +53,8 @@ void child()
 {
     //while(1);
     //void *ptr = __builtin_frob_return_addr(child);
-    asm("mov $0,%eax\n"
+    //*(u32*)ptr = 1;
+    asm("mov $123,%eax\n"
         "int $0x80\n");
     while(1);
 

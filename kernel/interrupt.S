@@ -42,9 +42,27 @@ default_int_hardler:
  popa
  iret
 
+.global system_call_handle # 系统调用处理函数
 # 系统调用中断
 .global syscall_handler
 syscall_handler:
+ push %ds
+ push %es
+ push %fs
+ push %gs
+ pusha
+
+ pushl $0x80
+ call system_call_handle
+ add $4,%esp
+
+ popa
+ pop %gs
+ pop %fs
+ pop %es
+ pop %ds
+
+ iret
 
 
 INTERRUPT_HANDLER 0x00, 0#  divide by zero
