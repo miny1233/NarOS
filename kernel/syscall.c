@@ -31,7 +31,7 @@ void system_call_handle(int vector,
         return;
     }
 
-    int(*handle)() = syscall_list[eax];
+    int(*handle)(u32,u32,u32,u32,u32) = syscall_list[eax];
 
     *ret = handle(ebx,ecx,edx,esi,edi);
 }
