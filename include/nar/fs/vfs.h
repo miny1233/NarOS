@@ -12,9 +12,9 @@
 
 typedef int fd_t;   //文件描述
 
-//虚拟文件系统启动并安装根文件系统
+// 虚拟文件系统启动并安装根文件系统
 void vfs_init();
-int fs_register(fs_t filesystem);
+int file_system_register(struct file_system_type* filesystem);
 
 int open(char* path);
 

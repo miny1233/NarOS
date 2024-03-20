@@ -22,7 +22,7 @@ typedef struct pcb_t
     struct pcb_t* next;    // 下一个任务
     pid_t pid;
     //打开的文件
-    struct fd files[FD_NR];
+    //struct fd files[FD_NR];
     //特权级状态
     u8 dpl; // 特权级
     // 内存

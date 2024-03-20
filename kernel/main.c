@@ -53,14 +53,11 @@ int init(unsigned long magic, multiboot_info_t* _info)
 
 void child()
 {
-    //while(1);
-    //void *ptr = __builtin_frob_return_addr(child);
-    //*(u32*)ptr = 1;
 
-        char str[] = "hi\n";
-        //str[0]++;
-        u32 ret;
-        _syscall1(0,ret,&str);
+    char str[] = "Hello World!\n";
+    char myself[] = "I am a Child\n";
+
+    printf(str);
 
     while(1);
 
