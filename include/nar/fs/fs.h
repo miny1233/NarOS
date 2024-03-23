@@ -11,28 +11,38 @@
 
 // fs由vfs来管理
 // 即fs创建后创建者不需要保存
-struct file_system_type{
+struct file_system_type
+{
     char* name;  //文件系统名称
     int fs_flags;
     struct file_system_type* next;
 
-    int (*mount)(struct file_system_type*,dev_t dev);
-    int (*unmount)(struct file_system_type*);
-
-    int (*open)(const char *path);  // 打开文件
-
+    struct super_block *(*read_super) (struct super_block *, void *, int);
 };
-// 超级块操作表
-struct super_operations
+
+struct inode
 {
-    
+
 };
 
 struct super_block
 {
     struct super_block* next;
     dev_t dev;
+    struct file_system_type* s_type;
     struct super_operations* s_op;
+};
+
+// 超级块操作表
+struct super_operations
+{
+    void (*read_inode) (struct inode *);        // 把磁盘中的inode数据读取入到内存中
+    void (*write_inode) (struct inode *, int);  // 把inode的数据写入到磁盘中
+    void (*put_inode) (struct inode *);         // 释放inode占用的内存
+    void (*delete_inode) (struct inode *);      // 删除磁盘中的一个inode
+    void (*put_super) (struct super_block *);   // 释放超级块占用的内存
+    void (*write_super) (struct super_block *); // 把超级块写入到磁盘中
+
 };
 
 
