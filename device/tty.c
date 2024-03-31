@@ -22,7 +22,6 @@ static inline void sync_cursor()
     outb(CRT_ADDR_LINE,CRT_CURSOR_H);
     outb(CRT_DATA_LINE,pos>>8);
 }
-char empty_video[80 * 2 * 25];
 
 typedef struct{
     char ch;
@@ -62,12 +61,9 @@ void tty_print(const char* str){
         }
         if(high >= 25) //超过宽度
         {
-            for(int i=1;i < 25;i++)
-            {
-                memcpy(screen[i - 1],screen[i], sizeof(pix) * 80);
-                high = 24;
-                width = 0;
-            }
+            memmove(screen[0],screen[1], sizeof(pix) * 80 * 24);
+            high = 24;
+            width = 0;
             for(int i=0;i<80;i++)screen[24][i].ch = ' ';
         }
         sync_cursor();
@@ -78,7 +74,7 @@ void tty_clear(){
     high=0;
     width=0;
     sync_cursor();
-    memcpy((void *)Videos_Mem_Start,empty_video,sizeof (empty_video));
+    memset((void *)Videos_Mem_Start,0,80 * 2 * 25);
 }
 
 static int tty_write(void *dev, void *buf, size_t count, idx_t idx, int flags)
@@ -100,7 +96,7 @@ void tty_init(){
         *flag=0x07;
         cursor+=2;
         flag+=2;
-        memcpy(empty_video,(void*)Videos_Mem_Start,sizeof(empty_video));
+        //memcpy(empty_video,(void*)Videos_Mem_Start,sizeof(empty_video));
     }
     device_install(DEV_CHAR,DEV_TTY,"main screen",
                    NULL,NULL, tty_write);

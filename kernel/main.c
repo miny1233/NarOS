@@ -57,7 +57,9 @@ void child()
     char str[] = "Hello World!\n";
     char myself[] = "I am a Child\n";
 
-    printf(str);
+    //printf(str);
+    int ret;
+    _syscall1(0,ret,myself);
 
     while(1);
 
