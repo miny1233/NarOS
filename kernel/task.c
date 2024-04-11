@@ -110,28 +110,6 @@ void task_init()
     LOG("load kernel task at pid 0\n");
 }
 
-
-// 复制数据到mm所描述的虚拟内存空间下
-// @sou : 必须是在内核空间的数据
-// @des : 必须是有效的虚拟地址
-// 函数堆栈必须在内核区域内
-static void* copy_to_mm_space(struct mm_struct *mm,void* des,void* sou,size_t len)
-{
-    //启动透穿
-    enable_rw_through(mm);
-    // 保存并切换页目录
-   void* old_pde = get_cr3();
-    set_cr3(mm->pde);
-
-    memcpy(des,sou,len);
-
-    //恢复页目录
-    set_cr3(old_pde);
-    disable_rw_through();
-
-    return des;
-}
-
 // 初始化中断栈
 static void stack_init(void* entry,void* stack_top)
 {

@@ -71,8 +71,12 @@ void init_user_mm_struct(struct mm_struct* mm);
 
 void* sbrk(struct mm_struct* mm,int increase);
 
-// 透穿
-void enable_rw_through(struct mm_struct* mm);
-void disable_rw_through();
+/* 透穿
+* 复制数据到mm所描述的虚拟内存空间下
+* @sou : 必须是在内核空间的数据
+* @des : 必须是有效的虚拟地址
+* 函数堆栈必须在内核区域内
+*/
+void* copy_to_mm_space(struct mm_struct *mm,void* des,void* sou,size_t len);
 
 #endif //NAROS_MEM_H

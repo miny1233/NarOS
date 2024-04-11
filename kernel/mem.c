@@ -59,6 +59,17 @@ void set_cr3(void* pde){
     asm volatile("movl %%eax,%%cr3\n"::"a"(pde));
 }
 
+u32 get_cr4()
+{
+    asm volatile("movl %cr4,%eax\n");
+}
+
+void set_cr4(u32 value)
+{
+    asm volatile("movl %%eax,%%cr4\n"::"a"(value));
+}
+
+
 static void enable_page()   // 启用分页
 {
     asm volatile(
@@ -111,7 +122,7 @@ static void entry_init(page_entry_t *entry, u32 index ,char dpl)
     } else{
         entry->user = 1;
     }
-
+    entry->global = 1;
     entry->index = index;
 }
 
@@ -238,15 +249,26 @@ struct page_error_code_t
 // 用于跨地址空间的写入
 static struct mm_struct* proxy_mm = NULL;
 
-void enable_rw_through(struct mm_struct* mm)
+// 复制数据到mm所描述的虚拟内存空间下
+// @sou : 必须是在内核空间的数据
+// @des : 必须是有效的虚拟地址
+// 函数堆栈必须在内核区域内
+void* copy_to_mm_space(struct mm_struct *mm,void* des,void* sou,size_t len)
 {
+    // 强制缺页中断时使用指定mm
     proxy_mm = mm;
-}
-void disable_rw_through()
-{
-    proxy_mm = NULL;
-}
+    // 保存并切换页目录
+    void* old_pde = get_cr3();
+    set_cr3(mm->pde);
 
+    memcpy(des,sou,len);
+
+    //恢复页目录
+    set_cr3(old_pde);
+    proxy_mm = NULL;
+
+    return des;
+}
 
 // 缺页中断
 static void page_int(int vector,
@@ -364,6 +386,11 @@ static void kernel_pte_init()
     //for(u32 idx = 0;idx < )
 
     set_cr3(page_table); // cr3指向页目录
+    // Enable PGE
+    u32 cr4 = get_cr4();
+    cr4 |= 1 << 7;
+    set_cr4(cr4);
+
     enable_page();
 }
 
@@ -406,6 +433,7 @@ void init_user_mm_struct(struct mm_struct* mm)
     void* pde_vaddr = kbrk(PAGE_SIZE);
     // 复制内核页表
     memcpy(pde_vaddr,get_root_task()->mm->pde,PAGE_SIZE);
+
     //取得页表物理地址
     mm->pde = get_paddr(pde_vaddr);
 
