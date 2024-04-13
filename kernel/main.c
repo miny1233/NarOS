@@ -36,6 +36,8 @@ int init(unsigned long magic, multiboot_info_t* _info)
     interrupt_init();   // 中断处理
     memory_init();      // 内存管理
     task_init();        // 任务调度
+    extern void cpu_init();
+    cpu_init();
     //vfs_init();       // 文件系统初始化
     //pipe_init();
     // 外围设备

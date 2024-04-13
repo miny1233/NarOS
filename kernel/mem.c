@@ -17,6 +17,7 @@ u32 total_page;
 #define IDX(addr) ((u32)(addr) >> 12) // 取页索引
 #define PAGE(idx) ((void*)((u32)(idx) << 12))  // 取页启始
 
+#define APIC_MASK 0xFEE00000
 #define PDE_MASK 0xFFC00000
 #define BITMAP_MASK 0xFFB00000 //专为内存位图设计的内存位置
 
@@ -381,6 +382,17 @@ static void kernel_pte_init()
             entry_init(&pte[index], offset++,KERNEL_DPL);   // 映射物理内存在原来的位置
         }
     }
+
+    //  映射APCI内存
+    page_entry_t *apic_pte = get_page();
+    for (u32 index = 0;index < 1024;index++)
+    {
+        entry_init(apic_pte + index, IDX(APIC_MASK + index * 4096),KERNEL_DPL);
+        apic_pte[index].pwt = 1;
+        apic_pte[index].pcd = 1;
+    }
+    entry_init(page_table + DIDX(APIC_MASK), IDX(apic_pte),KERNEL_DPL);
+
 
     //task_t* root_task = get_root_task();
     //for(u32 idx = 0;idx < )
