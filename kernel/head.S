@@ -7,6 +7,7 @@
 #一个小坑，在gnu汇编中calling C 的函数要加下划线
 #声明内核入口
 .global start,_start
+.global apup
 
 .section .text
 start:
@@ -54,12 +55,6 @@ legacy:
  movl %esp,%ebp # 初始化栈段,防止下面的call指令产生的eip数据冲掉内核
 
  xorl %eax,%eax
-#检测A20地址开启
-cheak_a20:
- inc %eax
- movl %eax,(0x000000)
- cmpl (0x100000),%eax
- jz cheak_a20
 
 multiboot_entry:
  /* Set Stack */
@@ -84,6 +79,46 @@ idle:
  hlt
  # int $0x20
  jmp idle
+
+.global ap_initialize
+.global gdt_ptr
+.global idt_48
+apup:
+# enable A20
+    call test_8042
+    mov $0xd1,%al
+    out %al,$0x64
+    call test_8042
+    mov $0xdf,%al
+    out %al,$0x60
+    call test_8042 #缓冲器空，A20地址线已启动
+
+    lgdt gdt_ptr
+    lidt idt_48
+
+    movl $0x10,%eax
+    movl %eax,%ds
+    movl %eax,%es
+    movl %eax,%fs
+    movl %eax,%gs
+    movl %eax,%ss
+
+# enable protect mode
+    movl %cr0,%eax
+    orl $1,%eax
+    movl %eax,%cr0
+
+    ljmp $8,$ap_initialize
+slp:
+    hlt
+    jmp slp
+
+#测试8042状态寄存器，等待输入缓冲为空时，进行写命令
+test_8042:
+  in $0x64,%al
+  test $0x2,%al #检查输入缓冲器
+  jnz test_8042
+  ret
 
 /* Our stack area. */
 .comm   stack, STACK_SIZE

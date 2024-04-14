@@ -64,7 +64,8 @@ clean:
 	rm -f $(BUILD)/*.bin
 
 
-QEMU:= qemu-system-x86_64 # 虚拟机
+QEMU:= qemu-system-i386 # 虚拟机
+QEMU+= -smp 2,sockets=1
 QEMU+= -m 128M # 内存
 QEMU+= -rtc base=localtime # 设备本地时间
 QEMU+= -drive file=$(BUILD)/nar.os,if=ide,index=0,media=disk,format=raw # 主硬盘

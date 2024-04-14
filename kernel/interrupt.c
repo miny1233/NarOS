@@ -122,7 +122,7 @@ void interrupt_init()
         idt[interrupt_num] = idt_s;
     }
     //注册默认的错误的处理
-    for(size_t interrupt_num = 0;interrupt_num < 0x20;interrupt_num++)
+    for(size_t interrupt_num = 0;interrupt_num < IDT_SIZE;interrupt_num++)
         interrupt_hardler_register(interrupt_num,exception_handler);
 
     // 初始化系统调用

@@ -26,6 +26,8 @@ static void check_grub(uint32_t magic)
         printk("boot by %s\n",device_info->boot_loader_name);
 }
 
+extern void cpu_init();
+
 int init(unsigned long magic, multiboot_info_t* _info)
 {
     device_init();      // 设备初始化
@@ -36,10 +38,11 @@ int init(unsigned long magic, multiboot_info_t* _info)
     interrupt_init();   // 中断处理
     memory_init();      // 内存管理
     task_init();        // 任务调度
-    extern void cpu_init();
-    cpu_init();
     //vfs_init();       // 文件系统初始化
     //pipe_init();
+
+    cpu_init();
+
     // 外围设备
     interrupt_hardler_register(0x21,keyboard_handler);
     set_interrupt_mask(1,1); //启动键盘中断

@@ -17,9 +17,9 @@ u32 total_page;
 #define IDX(addr) ((u32)(addr) >> 12) // 取页索引
 #define PAGE(idx) ((void*)((u32)(idx) << 12))  // 取页启始
 
-#define APIC_MASK 0xFEE00000
-#define PDE_MASK 0xFFC00000
-#define BITMAP_MASK 0xFFB00000 //专为内存位图设计的内存位置
+#define APIC_MASK 0xFEE00000UL
+#define PDE_MASK 0xFFC00000UL
+#define BITMAP_MASK 0xFFB00000UL //专为内存位图设计的内存位置
 
 #define PTE_SIZE (PAGE_SIZE/sizeof(page_entry_t))
 
@@ -119,11 +119,9 @@ static void entry_init(page_entry_t *entry, u32 index ,char dpl)
     if (KERNEL_DPL == dpl)
     {
         entry->user = 0;
-        entry->global = 1;
     } else{
         entry->user = 1;
     }
-    entry->global = 1;
     entry->index = index;
 }
 
@@ -194,7 +192,7 @@ void* get_page()
         if(page_map[index] == 0)
         {
             page_map[index] = 1;
-            printk("get page 0x%x\n",PAGE(index));
+            //printk("get page 0x%x\n",PAGE(index));
             return PAGE(index);
         }
     }
@@ -383,26 +381,21 @@ static void kernel_pte_init()
         }
     }
 
-    //  映射APCI内存
+    //  映射APCI内存 （完全没用 无论如何读写都是0 需要一个IA32大佬）
     page_entry_t *apic_pte = get_page();
     for (u32 index = 0;index < 1024;index++)
     {
-        entry_init(apic_pte + index, IDX(APIC_MASK + index * 4096),KERNEL_DPL);
+        u32 apci_reg_addr = IDX(APIC_MASK) + index;
+        entry_init(apic_pte + index, apci_reg_addr,KERNEL_DPL);
         apic_pte[index].pwt = 1;
         apic_pte[index].pcd = 1;
     }
     entry_init(page_table + DIDX(APIC_MASK), IDX(apic_pte),KERNEL_DPL);
+    (page_table + DIDX(APIC_MASK))->pwt = 1;
+    (page_table + DIDX(APIC_MASK))->pcd = 1;
 
-
-    //task_t* root_task = get_root_task();
-    //for(u32 idx = 0;idx < )
 
     set_cr3(page_table); // cr3指向页目录
-    // Enable PGE
-    u32 cr4 = get_cr4();
-    cr4 |= 1 << 7;
-    set_cr4(cr4);
-
     enable_page();
 }
 
