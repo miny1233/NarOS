@@ -4,6 +4,7 @@
 #include <nar/globa.h>
 #include <type.h>
 #include "memory.h"
+#include "nar/panic.h"
 
 descriptor_t gdt[GDT_SIZE]; // 内核全局描述符表
 pointer_t gdt_ptr;          // 内核全局描述符表指针

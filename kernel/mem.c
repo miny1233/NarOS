@@ -23,10 +23,10 @@ u32 total_page;
 
 #define PTE_SIZE (PAGE_SIZE/sizeof(page_entry_t))
 
-#define KERNEL_MEM_SPACE (0xE00000ULL) // 16MB 内核专用内存 (内核代码段 与 数据段) 内存分配时绕过这块物理内存
+#define KERNEL_MEM_SPACE (0xE00000UL) // 16MB 内核专用内存 (内核代码段 与 数据段) 内存分配时绕过这块物理内存
 
-#define KERNEL_HEAP_VMA_START ((void*)0x2000000ULL)
-#define USER_VMA_START  ((void*)0x40000000ULL) // 用户态 VMA 开始地址 1GB
+#define KERNEL_HEAP_VMA_START ((void*)0x2000000UL)
+#define USER_VMA_START  ((void*)0x40000000UL) // 用户态 VMA 开始地址 1GB
 #define USER_VMA_END (BITMAP_MASK << 10)
 #define KERNEL_HEAP_VMA_END USER_VMA_START
 
@@ -383,7 +383,7 @@ static void kernel_pte_init()
 
     //  映射APCI内存 （完全没用 无论如何读写都是0 需要一个IA32大佬）
     page_entry_t *apic_pte = get_page();
-    for (u32 index = 0;index < 1024;index++)
+    for (u32 index = 0; index < 1024; index++)
     {
         u32 apci_reg_addr = IDX(APIC_MASK) + index;
         entry_init(apic_pte + index, apci_reg_addr,KERNEL_DPL);
@@ -484,7 +484,7 @@ int fork_mm_struct(struct mm_struct* child,struct mm_struct* father)
                 if (fa_pet->index >= IDX(USER_VMA_START))
                     page_map[fa_pet->index]++;  //超过255次引用会溢出（有空再改）
 
-                 //内存只读 （内核态似乎能读写只读的内存 因此不会触发写时复制）
+                // 内存只读 （内核态似乎能读写只读的内存 因此不会触发写时复制）
                 fa_pet->write = 1;
             }
             // 复制页表

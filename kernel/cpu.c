@@ -57,8 +57,8 @@ void cpuid(u32 value,u32* eax,u32* ebx,u32* ecx,u32* edx)
 
 void ap_initialize()
 {
-    while(1)
-        printk("I am AP!\n");
+    printk("I am AP!\n");
+    while(1);
 }
 
 
@@ -81,10 +81,10 @@ void cpu_init()
 
     u32 apic_base;
     apic_base = rdmsr(0x1b);
-    LOG("apic base: %p\n",apic_base & ~(0xfff));
-    LOG("bsp: %d\n",(apic_base >> 8) & 1);
-    LOG("apic global: %d\n",(apic_base >> 11) & 1);
-    LOG("x2apic enable: %d\n",(apic_base >> 10) & 1);
+    //LOG("apic base: %p\n",apic_base & ~(0xfff));
+    //LOG("bsp: %d\n",(apic_base >> 8) & 1);
+    //LOG("apic global: %d\n",(apic_base >> 11) & 1);
+    //LOG("x2apic enable: %d\n",(apic_base >> 10) & 1);
 
     // 复制AP启动代码到低1M内存
     memcpy((void*)0x0,apup,512);
@@ -96,13 +96,9 @@ void cpu_init()
     // AP 启动序列
     LOG("wake up ap!\n");
     u32 *icr = (u32*)ICR_LOW;
-    LOG("send init\n");
     *icr = 0xc4500;
     //delay();  // 物理机要开，虚拟机就不用了
-    LOG("send startup\n");
     *icr = 0xc4600;
-    //delay();
-    LOG("send startup\n");
     *icr = 0xc4600;
 
     change_page();

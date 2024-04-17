@@ -81,20 +81,32 @@ idle:
  jmp idle
 
 .global ap_initialize
-.global gdt_ptr
-.global idt_48
+.code16
 apup:
 # enable A20
-    call test_8042
-    mov $0xd1,%al
-    out %al,$0x64
-    call test_8042
-    mov $0xdf,%al
-    out %al,$0x60
-    call test_8042 #缓冲器空，A20地址线已启动
+# 通过系统线启动 (危险)
+    in $0x92,%al
+    or $0x2,%al
+    out %al,$0x92
 
-    lgdt gdt_ptr
-    lidt idt_48
+    mov $0x1f0,%eax
+    # gdt48
+    movw $1023,(%eax)
+    movl $1076928,2(%eax)
+
+    mov $0x200,%eax
+    # idt48
+    movw $2047,(%eax)
+    movl $1078112,2(%eax)
+
+    lgdt %fs:0x1f0
+    lidt %fs:0x200
+
+# enable protect mode
+    movl %cr0,%eax
+    xor $0x60000000,%eax # 擦掉 CD NW
+    orl $0x1,%eax
+    movl %eax,%cr0
 
     movl $0x10,%eax
     movl %eax,%ds
@@ -103,22 +115,21 @@ apup:
     movl %eax,%gs
     movl %eax,%ss
 
-# enable protect mode
-    movl %cr0,%eax
-    orl $1,%eax
-    movl %eax,%cr0
+    movl $(ap_stack + 1024),%esp
+    movl %esp,%ebp
 
-    ljmp $8,$ap_initialize
+    ljmp $8,$0x6a # jmp to slp
+
+    nop
+    nop
+
+.code32
 slp:
-    hlt
-    jmp slp
+    mov $ap_initialize,%eax
+    jmp *%eax
 
-#测试8042状态寄存器，等待输入缓冲为空时，进行写命令
-test_8042:
-  in $0x64,%al
-  test $0x2,%al #检查输入缓冲器
-  jnz test_8042
-  ret
+/* ap stack */
+.comm ap_stack, 1024
 
 /* Our stack area. */
 .comm   stack, STACK_SIZE
