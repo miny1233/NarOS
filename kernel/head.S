@@ -81,7 +81,7 @@ idle:
  jmp idle
 
 .global ap_initialize
-
+# 此代码会被重新加载在地址0处
 .code16
 apup:
 # enable A20
@@ -115,16 +115,16 @@ apup:
     movl %eax,%gs
     movl %eax,%ss
 
-    ljmp $8,$0x35 # jmp to slp
+    ljmp $8,$(slp - apup) # jmp to slp
 
     nop # 防止CLion的反编译无法识别代码
     nop
-
+slp:
 .code32
 
     nop
     nop
-slp:
+
     xorl %eax,%eax
     leal ap_locker(%eax),%ebx
 get_locker:
@@ -136,14 +136,14 @@ get_locker:
     movl $(0x1000),%esp    # 加载堆栈
     movl %esp,%ebp
 
-    mov $ap_initialize,%eax
+    mov $ap_initialize,%eax # 这种写法是为了绕过相对寻址
     call *%eax
 
 release_locker:
     movl $1,ap_locker
-asleep:
-    hlt
-    jmp asleep
+
+    movl $idle,%eax
+    jmp *%eax
 
 ap_locker:
     .long 1

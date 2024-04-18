@@ -65,7 +65,7 @@ clean:
 
 
 QEMU:= qemu-system-i386 # 虚拟机
-QEMU+= -smp 4,sockets=1
+QEMU+= -smp 2,sockets=1
 QEMU+= -m 128M # 内存
 QEMU+= -rtc base=localtime # 设备本地时间
 QEMU+= -drive file=$(BUILD)/nar.os,if=ide,index=0,media=disk,format=raw # 主硬盘
