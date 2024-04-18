@@ -5,6 +5,7 @@
 #include <nar/panic.h>
 #include <memory.h>
 #include <type.h>
+#include "nar/globa.h"
 
 #define ICR_LOW 0x0FEE00300UL
 #define SVR 0x0FEE000F0UL
@@ -55,10 +56,12 @@ void cpuid(u32 value,u32* eax,u32* ebx,u32* ecx,u32* edx)
             );
 }
 
+int ap_id = 0;
+
 void ap_initialize()
 {
-    printk("I am AP!\n");
-    while(1);
+    printk("I am AP %d!\n",++ap_id);
+    //printk("AP %d\n",i);
 }
 
 
@@ -88,6 +91,13 @@ void cpu_init()
 
     // 复制AP启动代码到低1M内存
     memcpy((void*)0x0,apup,512);
+    // 为16位AP复制gdt_48 idt_48
+    extern pointer_t gdt_ptr;
+    extern pointer_t idt_48;
+    memcpy((void *) 0x1f0,&gdt_ptr,sizeof gdt_ptr);
+    memcpy((void *) 0x200,&idt_48,sizeof idt_48);
+
+    asm volatile("mfence":::"memory");
 
     change_page();
 

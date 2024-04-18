@@ -73,7 +73,7 @@ static void exception_handler(
 
 
 gate_t idt[IDT_SIZE];
-volatile pointer_t idt_48;
+pointer_t idt_48;
 
 static void pic_init()
 {

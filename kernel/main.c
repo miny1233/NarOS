@@ -47,11 +47,10 @@ int init(unsigned long magic, multiboot_info_t* _info)
     interrupt_hardler_register(0x21,keyboard_handler);
     set_interrupt_mask(1,1); //启动键盘中断
 
-    LOG("start child proc!\n");
+    //LOG("start child proc!\n");
     //task_create(child);
-    exec(child,PAGE_SIZE);
     //exec(child,PAGE_SIZE);
-    LOG("over\n");
+    //LOG("over\n");
     //初始化完毕，初始化程序变idle程序
     return 0;
 }

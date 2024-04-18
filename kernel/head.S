@@ -81,6 +81,7 @@ idle:
  jmp idle
 
 .global ap_initialize
+
 .code16
 apup:
 # enable A20
@@ -89,47 +90,64 @@ apup:
     or $0x2,%al
     out %al,$0x92
 
-    mov $0x1f0,%eax
+    #mov $0x1f0,%eax
     # gdt48
-    movw $1023,(%eax)
-    movl $1076928,2(%eax)
+    #movw $1023,(%eax)
+    #movl $1076928,2(%eax)
 
-    mov $0x200,%eax
+    #mov $0x200,%eax
     # idt48
-    movw $2047,(%eax)
-    movl $1078112,2(%eax)
+    #movw $2047,(%eax)
+    #movl $1078112,2(%eax)
 
-    lgdt %fs:0x1f0
+    lgdt %fs:0x1f0  # 特殊定义位置
     lidt %fs:0x200
 
 # enable protect mode
     movl %cr0,%eax
-    xor $0x60000000,%eax # 擦掉 CD NW
     orl $0x1,%eax
     movl %eax,%cr0
 
-    movl $0x10,%eax
+    movl $0x10,%eax # 加载数据段寄存器
     movl %eax,%ds
     movl %eax,%es
     movl %eax,%fs
     movl %eax,%gs
     movl %eax,%ss
 
-    movl $(ap_stack + 1024),%esp
-    movl %esp,%ebp
+    ljmp $8,$0x35 # jmp to slp
 
-    ljmp $8,$0x6a # jmp to slp
-
-    nop
+    nop # 防止CLion的反编译无法识别代码
     nop
 
 .code32
-slp:
-    mov $ap_initialize,%eax
-    jmp *%eax
 
-/* ap stack */
-.comm ap_stack, 1024
+    nop
+    nop
+slp:
+    xorl %eax,%eax
+    leal ap_locker(%eax),%ebx
+get_locker:
+    lock xchg (%ebx),%eax
+    test $1,%eax
+    jz get_locker
+
+    # 堆栈是共享的
+    movl $(0x1000),%esp    # 加载堆栈
+    movl %esp,%ebp
+
+    mov $ap_initialize,%eax
+    call *%eax
+
+release_locker:
+    movl $1,ap_locker
+asleep:
+    hlt
+    jmp asleep
+
+ap_locker:
+    .long 1
+
 
 /* Our stack area. */
 .comm   stack, STACK_SIZE
