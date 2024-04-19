@@ -6,6 +6,10 @@
 #include <memory.h>
 #include <type.h>
 #include "nar/globa.h"
+#include "syscall.h"
+#include "nar/mem.h"
+
+#define CR0_PG (1 << 31)
 
 #define ICR_LOW 0x0FEE00300UL
 #define SVR 0x0FEE000F0UL
@@ -32,22 +36,39 @@ static void wrmsr(u32 addr,u32 low)
             );
 }
 
-static void change_page()   // 启用分页
+static u32 get_cr0()
+{
+    u32 ret;
+    asm volatile(
+            "movl %%cr0,%%eax\n"
+            :"=a"(ret)
+            );
+    return ret;
+}
+
+static void set_cr0(u32 cr0)
 {
     asm volatile(
-            "movl %cr0, %eax\n"
-            "xorl $0x80000000, %eax\n"
-            "movl %eax, %cr0\n");
+            "movl %%eax,%%cr0\n"
+            ::"a"(cr0)
+            );
 }
 
-
-static void delay()
+static void disable_page()
 {
-    int wait = 1e9;
-    while(wait--);
+    u32 cr0 = get_cr0();
+    cr0 &= ~(CR0_PG);
+    set_cr0(cr0);
 }
 
-void cpuid(u32 value,u32* eax,u32* ebx,u32* ecx,u32* edx)
+static void enable_page()
+{
+    u32 cr0 = get_cr0();
+    cr0 |= CR0_PG;
+    set_cr0(cr0);
+}
+
+void cpuid(const u32 value,u32* const eax,u32* const ebx,u32* const ecx,u32* const edx)
 {
     asm volatile(
             "cpuid\n"
@@ -56,16 +77,14 @@ void cpuid(u32 value,u32* eax,u32* ebx,u32* ecx,u32* edx)
             );
 }
 
-int ap_id = 0;
+static int ap_id = 0;
 
-void ap_initialize()
+__attribute__((unused)) void ap_initialize()
 {
-    printk("I am AP %d!\n",++ap_id);
-    //printk("AP %d\n",i);
+    u32 apic_id = *(u32 *)APIC_ID;
+    apic_id = (apic_id >> 24) & 0xf; // P6 family and Pentium processors
+    printk("I am cpu %d !\n",apic_id);
 }
-
-
-extern void apup();
 
 void cpu_init()
 {
@@ -84,22 +103,24 @@ void cpu_init()
 
     u32 apic_base;
     apic_base = rdmsr(0x1b);
-    //LOG("apic base: %p\n",apic_base & ~(0xfff));
-    //LOG("bsp: %d\n",(apic_base >> 8) & 1);
-    //LOG("apic global: %d\n",(apic_base >> 11) & 1);
+    LOG("apic base: %p\n",apic_base & ~(0xfff));
+    LOG("bsp: %d\n",(apic_base >> 8) & 1);
+    LOG("apic global: %d\n",(apic_base >> 11) & 1);
     //LOG("x2apic enable: %d\n",(apic_base >> 10) & 1);
 
+    printk("bsp apic id is %x\n",*(u32 *)APIC_ID);
+
     // 复制AP启动代码到低1M内存
+    extern void apup();
     memcpy((void*)0x0,apup,512);
     // 为16位AP复制gdt_48 idt_48
-    extern pointer_t gdt_ptr;
-    extern pointer_t idt_48;
+    __attribute__((unused)) extern pointer_t gdt_ptr;
+    __attribute__((unused)) extern pointer_t idt_48;
     memcpy((void *) 0x1f0,&gdt_ptr,sizeof gdt_ptr);
     memcpy((void *) 0x200,&idt_48,sizeof idt_48);
 
-    asm volatile("mfence":::"memory");
-
-    change_page();
+    disable_page();
+    mfence();   // 内存屏障
 
     u32* spurious = (u32*) SVR;
     LOG("SVR: %x\n",*spurious);
@@ -111,7 +132,7 @@ void cpu_init()
     *icr = 0xc4600;
     *icr = 0xc4600;
 
-    change_page();
+    enable_page();
 
 }
 

@@ -10,6 +10,11 @@
 
 #include <type.h>
 
+__attribute__((inline)) static void mfence()
+{
+    asm volatile("mfence":::"memory");
+}
+
 typedef struct page_entry_t
 {
     u8 present : 1;  // 在内存中
