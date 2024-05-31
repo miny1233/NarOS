@@ -36,7 +36,10 @@ u32 total_page;
 // 内存引用计数 4kb对齐 从0开始
 u8* page_map;
 
-page_entry_t* page_table;  // 页目录
+__attribute__ ((aligned (4096)))
+page_entry_t page_dic[1024];  // 内核页目录
+__attribute__ ((aligned (4096)))
+page_entry_t page_tables[256][1024]; // 内核页表 (共1GB)
 
 static void* ksbrk = KERNEL_HEAP_VMA_START;
 
@@ -123,65 +126,6 @@ static void entry_init(page_entry_t *entry, u32 index ,char dpl)
         entry->user = 1;
     }
     entry->index = index;
-}
-
-static void kernel_pte_init(); // 映射页
-
-void memory_init()
-{
-    LOG("memory init\n");
-    //内存状态的检测
-    LOG("total mem size is %d MB\n",device_info->mem_upper >> 10);
-
-    if (!(device_info->flags & (1 << 6)))
-        panic("Cannot Scan Memory!");
-
-    multiboot_memory_map_t *mmap;
-    LOG("mmap_addr = 0x%x, mmap_length = 0x%x\n",(unsigned) device_info->mmap_addr, (unsigned) device_info->mmap_length);
-    /*
-    * 事例程序中提供了这样一段代码
-    * https://www.gnu.org/software/grub/manual/multiboot/multiboot.html#kernel_002ec
-    * 这个结构是比较离谱的size成员在-4字节处
-    */
-    for (mmap = (multiboot_memory_map_t *) device_info->mmap_addr;
-    (unsigned long) mmap < device_info->mmap_addr + device_info->mmap_length;
-    mmap = (multiboot_memory_map_t *) ((unsigned long) mmap
-            + mmap->size + sizeof (mmap->size))) {
-        LOG(" size = 0x%x, base_addr = 0x%x%08x,"
-            " length = 0x%x%08x, type = 0x%x\n",
-            (unsigned) mmap->size,
-            (unsigned) (mmap->addr >> 32),
-            (unsigned) (mmap->addr & 0xffffffff),
-            (unsigned) (mmap->len >> 32),
-            (unsigned) (mmap->len & 0xffffffff),
-            (unsigned) mmap->type);
-        if (memory_size < (mmap->len & 0xffffffff) && mmap->type == 0x1) {
-            memory_base = (mmap->addr & 0xffffffff);
-            memory_size = (mmap->len & 0xffffffff);
-        }
-    }
-
-    //grub载入内核也会载入到可用内存上 所以必须为内核空出一定的空间
-    //grub是从低到高载入的 所以只需要让出低位的内存
-    memory_base += KERNEL_MEM_SPACE;
-    memory_size -= KERNEL_MEM_SPACE;
-
-    LOG("mem base 0x%X size: 0x%X\n",memory_base,memory_size);
-
-    total_page = IDX(memory_size);
-    LOG("total page 0x%x\n",total_page);
-
-    page_map = (void*)memory_base;  //开头的内存分配给内存表
-    memory_base += ((total_page / PAGE_SIZE) + 1) * PAGE_SIZE;  //表要能记录total_page个内存
-    memory_size -= ((total_page / PAGE_SIZE) + 1) * PAGE_SIZE;  //那么剩余的内存就减少了
-    total_page -= (total_page / PAGE_SIZE) + 1;                 //总可用页数减少
-
-    LOG("can use mem base 0x%X size: 0x%X\n",memory_base,memory_size);
-    for(size_t index=0;index < total_page;index++)
-        page_map[index] = 0; //设置为全0
-
-    // 设置内核页表
-    kernel_pte_init();
 }
 
 void* get_page()
@@ -305,32 +249,35 @@ check_passed:
         //缺少页表
         if(page_table_fir->present == 0)
         {
+            // 内核区域不可能出现缺少页表
+            assert(vaddr >= USER_VMA_START);
+
             page_entry_t* page_table_sec = get_page();
             if(page_table_sec == NULL)
                 goto fault;
 
             entry_init(page_table_fir,IDX(page_table_sec),vaddr < USER_VMA_START ? KERNEL_DPL : USER_DPL);
+            memset(page_table_sec,0,PAGE_SIZE);
 
             recorde_used_page(mm,page_table_sec);
         }
         // 初始化页表
         page_entry_t* page_table_sec = get_pte(vaddr);
         flush_tlb(page_table_sec);
-
-        // 大坑，之前每次都擦除一遍页表
-        if(page_table_fir->present == 0)
-            memset(page_table_sec,0,PAGE_SIZE);
-
+        // 移动到对应到页表项
         page_table_sec += TIDX(vaddr);
 
-        //分配物理内存
+        // 分配物理内存
         void* pm = get_page();
         if(pm == NULL)
             goto fault;
-
+        // 映射物理内存
         entry_init(page_table_sec, IDX(pm), vaddr < USER_VMA_START ? KERNEL_DPL : USER_DPL);
 
-        recorde_used_page(mm,pm);
+        // 只记录用户态的内存占用 内核堆由其他程序管理
+        if (vaddr >= USER_VMA_START)
+            recorde_used_page(mm,pm);
+
         goto ok;
     }
     else if (code->write)
@@ -357,48 +304,6 @@ fault:
         task_exit();
 }
 
-// 映射内核基本的内存
-static void kernel_pte_init()
-{
-    //注册缺页中断
-    interrupt_hardler_register(0x0e, page_int);
-
-    page_table = get_page(); // 取一页内存用作页目录
-
-    memset(page_table,0,PAGE_SIZE); // 全0可以使present为0 便于触发缺页中断
-    LOG("page_table at 0x%x\n", page_table);
-
-    u32 offset = 0;
-    for(int i = 0;i < 4;i++) {
-        page_entry_t* pte = get_page();
-
-        memset(pte, 0, PAGE_SIZE);
-
-        entry_init(&page_table[i], IDX((u32) pte),KERNEL_DPL);   // 页目录0->内核页表
-        for (u32 index = 0; index < PAGE_SIZE / 4; index++)
-        {
-            entry_init(&pte[index], offset++,KERNEL_DPL);   // 映射物理内存在原来的位置
-        }
-    }
-
-    //  映射APCI内存 （完全没用 无论如何读写都是0 需要一个IA32大佬）
-    page_entry_t *apic_pte = get_page();
-    for (u32 index = 0; index < 1024; index++)
-    {
-        u32 apci_reg_addr = IDX(APIC_MASK) + index;
-        entry_init(apic_pte + index, apci_reg_addr,KERNEL_DPL);
-        apic_pte[index].pwt = 1;
-        apic_pte[index].pcd = 1;
-    }
-    entry_init(page_table + DIDX(APIC_MASK), IDX(apic_pte),KERNEL_DPL);
-    (page_table + DIDX(APIC_MASK))->pwt = 1;
-    (page_table + DIDX(APIC_MASK))->pcd = 1;
-
-
-    set_cr3(page_table); // cr3指向页目录
-    enable_page();
-}
-
 //推动堆指针
 void* sbrk(struct mm_struct* mm,int increase)
 {
@@ -413,23 +318,11 @@ void* sbrk(struct mm_struct* mm,int increase)
     return ptr;
 }
 
-void* kbrk(int increase)
+void* kbrk(int size)
 {
-    void* ptr = NULL;
-
-    if(ksbrk + increase < (void*) USER_VMA_START)
-    {
-        ptr = ksbrk;
-        ksbrk += increase;
-    }
-
-    return ptr;
-}
-
-// 按页分配内存
-void* kalloc_page(int page)
-{
-    return kbrk(page * PAGE_SIZE);
+    void* ret = ksbrk;
+    ksbrk += size;
+    return ret;
 }
 
 void init_user_mm_struct(struct mm_struct* mm)
@@ -451,47 +344,109 @@ void init_user_mm_struct(struct mm_struct* mm)
     mm->brk = USER_VMA_START;
 }
 
-//为fork准备的内存描述复制
-int fork_mm_struct(struct mm_struct* child,struct mm_struct* father)
+
+static void kernel_pte_init(); // 映射页
+
+void memory_init()
 {
-    child->pde = get_page();
-    //复制一级页目录
-    memcpy(child->pde,father->pde,PAGE_SIZE);
+    LOG("memory init\n");
+    //内存状态的检测
+    LOG("total mem size is %d MB\n",device_info->mem_upper >> 10);
 
-    // 制作页表项指针，防止写错代码
-    page_entry_t *child_pte = child->pde,
-                    *father_pte = father->pde;
+    if (!(device_info->flags & (1 << 6)))
+        panic("Cannot Scan Memory!");
 
-    for(u32 index=0;index < PTE_SIZE; index++)
-    {
-        // 当此页有效则开始复制
-        if (child_pte[index].present)
-        {
-            // 为页表申请内存
-            page_entry_t *sub_pte = get_page();
-            child_pte[index].index = IDX(sub_pte);
-
-            // 取父二级页表
-            page_entry_t *fa_sub_pte = PAGE(father_pte[index].index);
-
-            for (int sub_idx = 0;sub_idx < PTE_SIZE;sub_idx++)
-            {
-                // 取出当前页表项
-                page_entry_t *fa_pet = fa_sub_pte + sub_idx;
-                // 页表项不存在则不复制
-                if(!fa_pet->present) continue;
-                // 内存增加引用
-                if (fa_pet->index >= IDX(USER_VMA_START))
-                    page_map[fa_pet->index]++;  //超过255次引用会溢出（有空再改）
-
-                // 内存只读 （内核态似乎能读写只读的内存 因此不会触发写时复制）
-                fa_pet->write = 1;
-            }
-            // 复制页表
-            memcpy(sub_pte,fa_sub_pte,PAGE_SIZE);
+    multiboot_memory_map_t *mmap;
+    LOG("mmap_addr = 0x%x, mmap_length = 0x%x\n",(unsigned) device_info->mmap_addr, (unsigned) device_info->mmap_length);
+    /*
+    * 事例程序中提供了这样一段代码
+    * https://www.gnu.org/software/grub/manual/multiboot/multiboot.html#kernel_002ec
+    * 这个结构是比较离谱的size成员在-4字节处
+    */
+    for (mmap = (multiboot_memory_map_t *) device_info->mmap_addr;
+         (unsigned long) mmap < device_info->mmap_addr + device_info->mmap_length;
+         mmap = (multiboot_memory_map_t *) ((unsigned long) mmap
+                                            + mmap->size + sizeof (mmap->size))) {
+        LOG(" size = 0x%x, base_addr = 0x%x%08x,"
+            " length = 0x%x%08x, type = 0x%x\n",
+            (unsigned) mmap->size,
+            (unsigned) (mmap->addr >> 32),
+            (unsigned) (mmap->addr & 0xffffffff),
+            (unsigned) (mmap->len >> 32),
+            (unsigned) (mmap->len & 0xffffffff),
+            (unsigned) mmap->type);
+        if (memory_size < (mmap->len & 0xffffffff) && mmap->type == 0x1) {
+            memory_base = (mmap->addr & 0xffffffff);
+            memory_size = (mmap->len & 0xffffffff);
         }
     }
-    return 0;
+
+    //grub载入内核也会载入到可用内存上 所以必须为内核空出一定的空间
+    //grub是从低到高载入的 所以只需要让出低位的内存
+    memory_base += KERNEL_MEM_SPACE;
+    memory_size -= KERNEL_MEM_SPACE;
+
+    LOG("mem base 0x%X size: 0x%X\n",memory_base,memory_size);
+
+    total_page = IDX(memory_size);
+    LOG("total page 0x%x\n",total_page);
+
+    page_map = (void*)memory_base;  //开头的内存分配给内存表
+    memory_base += ((total_page / PAGE_SIZE) + 1) * PAGE_SIZE;  //表要能记录total_page个内存
+    memory_size -= ((total_page / PAGE_SIZE) + 1) * PAGE_SIZE;  //那么剩余的内存就减少了
+    total_page -= (total_page / PAGE_SIZE) + 1;                 //总可用页数减少
+
+    LOG("can use mem base 0x%X size: 0x%X\n",memory_base,memory_size);
+    for(size_t index=0;index < total_page;index++)
+        page_map[index] = 0; //设置为全0
+
+    // 设置内核页表
+    kernel_pte_init();
+}
+
+// 映射内核基本的内存
+static void kernel_pte_init()
+{
+    //注册缺页中断
+    interrupt_hardler_register(0x0e, page_int);
+
+    memset(page_dic,0,sizeof (page_dic));  // 初始化页目录
+    memset (page_tables,0,sizeof (page_tables)); // 初始化内核页表
+    // 将所有的内核页表都映射上 保证内核页面一定是共享的
+    for (size_t idx = 0;idx < 256;idx++)
+    {
+        entry_init(page_dic + idx, IDX(page_tables[idx]),0);
+    }
+    // 将内核的现在占用的空间直接映射 32MB
+    for (size_t idx = 0;idx < 8;idx++)
+    {
+        // 一个页表映射4MB空间
+        for (size_t mapping_count = 0;mapping_count < 1024;mapping_count++)
+        {
+            static size_t offset = 0;
+            // 每次映射4KB
+            entry_init(&page_tables[idx][mapping_count],offset++,0);
+        }
+    }
+
+    //  映射APCI内存 （完全没用 无论如何读写都是0 需要一个IA32大佬）
+    /*
+    page_entry_t *apic_pte = get_page();
+    for (u32 index = 0; index < 1024; index++)
+    {
+        u32 apci_reg_addr = IDX(APIC_MASK) + index;
+        entry_init(apic_pte + index, apci_reg_addr,KERNEL_DPL);
+        apic_pte[index].pwt = 1;
+        apic_pte[index].pcd = 1;
+    }
+    entry_init(page_table + DIDX(APIC_MASK), IDX(apic_pte),KERNEL_DPL);
+    (page_table + DIDX(APIC_MASK))->pwt = 1;
+    (page_table + DIDX(APIC_MASK))->pcd = 1;
+     */
+
+
+    set_cr3(&page_dic); // cr3指向页目录
+    enable_page();
 }
 
 

@@ -256,43 +256,6 @@ fail:
     return -1;
 }
 
-pid_t kernel_clone(struct kernel_clone_args* args)
-{
-    pcb_t *child = NULL;//get_empty_pcb();
-    pcb_t *father = running;
-
-    if(child == NULL)
-        return -1;
-    // 复制父进程信息
-    memcpy(child,running,sizeof(pcb_t));
-
-    // 取出内存结构
-    struct mm_struct *mm = child->mm;
-
-    //设置pid
-    child->pid = pid_total++;
-
-    if (args->flags & CLONE_STACK)
-        return -EINVAL;
-    if (args->flags & CLONE_PTE)
-    {
-        // 拷贝页表 不是共享（写时复制基础）
-        fork_mm_struct(child->mm,father->mm);
-    }
-
-    return child->pid;
-}
-
-// fork()系统调用
-pid_t sys_fork()
-{
-    struct kernel_clone_args clone_fork = {
-            .flags = CLONE_FORK,
-    };
-
-    return kernel_clone(&clone_fork);
-}
-
 // yield()系统调用
 void sys_yield()
 {

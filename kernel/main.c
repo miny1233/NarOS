@@ -40,8 +40,7 @@ int init(unsigned long magic, multiboot_info_t* _info)
     task_init();        // 任务调度
     //vfs_init();       // 文件系统初始化
     //pipe_init();
-
-    cpu_init();
+    //cpu_init();
 
     // 外围设备
     interrupt_hardler_register(0x21,keyboard_handler);
@@ -49,7 +48,7 @@ int init(unsigned long magic, multiboot_info_t* _info)
 
     //LOG("start child proc!\n");
     //task_create(child);
-    //exec(child,PAGE_SIZE);
+    exec(child,PAGE_SIZE);
     //LOG("over\n");
     //初始化完毕，初始化程序变idle程序
     return 0;
@@ -64,6 +63,9 @@ void child()
     //printf(str);
     int ret;
     _syscall1(0,ret,myself);
+
+    int *ptr = NULL;
+    //*ptr =0;
 
     while(1);
 
