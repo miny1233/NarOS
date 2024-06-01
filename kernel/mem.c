@@ -23,7 +23,7 @@ u32 total_page;
 
 #define PTE_SIZE (PAGE_SIZE/sizeof(page_entry_t))
 
-#define KERNEL_MEM_SPACE (0xE00000UL) // 16MB 内核专用内存 (内核代码段 与 数据段) 内存分配时绕过这块物理内存
+#define KERNEL_MEM_SPACE (0x1000000UL) // 16MB 内核专用内存 (内核代码段 与 数据段) 内存分配时绕过这块物理内存
 
 #define KERNEL_HEAP_VMA_START ((void*)0x2000000UL)
 #define USER_VMA_START  ((void*)0x40000000UL) // 用户态 VMA 开始地址 1GB
@@ -136,7 +136,7 @@ void* get_page()
         if(page_map[index] == 0)
         {
             page_map[index] = 1;
-            //printk("get page 0x%x\n",PAGE(index));
+            //LOG(" get page 0x%x\n",PAGE(index));
             return PAGE(index);
         }
     }
@@ -217,7 +217,7 @@ void* copy_to_mm_space(struct mm_struct *mm,void* des,void* sou,size_t len)
 static void page_int(int vector,
                      u32 edi, u32 esi, u32 ebp, u32 esp,
                      u32 ebx, u32 edx, u32 ecx, u32 eax,
-                     u32 gs, u32 fs, u32 es, u32 ds,u32 error,
+                     u32 gs,  u32 fs, u32 es, u32 ds,u32 error,
                      u32 eip, u32 cs, u32 eflags)
 {
     assert(vector == 0xe);
@@ -231,7 +231,7 @@ static void page_int(int vector,
     if (running->dpl == 3 && vaddr < USER_VMA_START)
         goto segment_error;
 
-    //取出内存描述符
+    // 取出内存描述符
     struct mm_struct* mm = proxy_mm ? proxy_mm : running->mm;
 
     //检查是否在堆内存 内核进程跳过检查
@@ -327,9 +327,15 @@ void* kbrk(int size)
 
 void init_user_mm_struct(struct mm_struct* mm)
 {
-    // 初始化页目录
-    void* pde_vaddr = kbrk(PAGE_SIZE);
-    // 复制内核页表
+    // 获得页目录内存
+    size_t pde_mem = (size_t)kbrk(2 * PAGE_SIZE);
+    // 4KB对齐
+    pde_mem += PAGE_SIZE;
+    pde_mem &= ~(0xfff);
+
+    // 设置页目录内存地址
+    void* pde_vaddr = (void*)pde_mem;
+    // 复制内核页目录
     memcpy(pde_vaddr,get_root_task()->mm->pde,PAGE_SIZE);
 
     //取得页表物理地址
@@ -415,7 +421,7 @@ static void kernel_pte_init()
     // 将所有的内核页表都映射上 保证内核页面一定是共享的
     for (size_t idx = 0;idx < 256;idx++)
     {
-        entry_init(page_dic + idx, IDX(page_tables[idx]),0);
+        entry_init(page_dic + idx, IDX(page_tables[idx]),KERNEL_DPL);
     }
     // 将内核的现在占用的空间直接映射 32MB
     for (size_t idx = 0;idx < 8;idx++)
@@ -425,7 +431,7 @@ static void kernel_pte_init()
         {
             static size_t offset = 0;
             // 每次映射4KB
-            entry_init(&page_tables[idx][mapping_count],offset++,0);
+            entry_init(&page_tables[idx][mapping_count],offset++,KERNEL_DPL);
         }
     }
 
@@ -443,7 +449,6 @@ static void kernel_pte_init()
     (page_table + DIDX(APIC_MASK))->pwt = 1;
     (page_table + DIDX(APIC_MASK))->pcd = 1;
      */
-
 
     set_cr3(&page_dic); // cr3指向页目录
     enable_page();

@@ -48,8 +48,8 @@ int init(unsigned long magic, multiboot_info_t* _info)
 
     //LOG("start child proc!\n");
     //task_create(child);
-    exec(child,PAGE_SIZE);
-    //LOG("over\n");
+    pid_t pid = exec(child,PAGE_SIZE);
+    printk("child pid is %d\n",pid);
     //初始化完毕，初始化程序变idle程序
     return 0;
 }
@@ -67,7 +67,7 @@ void child()
     int *ptr = NULL;
     //*ptr =0;
 
-    while(1);
+    //while(1);
 
-    task_exit();
+    //task_exit();
 }

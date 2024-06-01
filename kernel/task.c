@@ -12,9 +12,9 @@ task_t *running;        // 当前运行的任务
 
 size_t process_num = 0; // 运行任务数
 
-// 任务切换时要用到的数据都需要放入共享内存区
-task_t task_list[MAX_TASK_NUM];  // 任务列表 所有任务在这里统一管理
-struct mm_struct mm_list[MAX_TASK_NUM];   //根任务内存描述符
+// 任务0
+task_t root_task_pcb;
+struct mm_struct root_mm;
 
 pid_t pid_total = 0;
 
@@ -26,23 +26,14 @@ extern void interrupt_handler_ret_0x20();  //时钟中断返回地址
 // 内核最基本的任务 通过这个进程来保证内核任务的内存完整性
 task_t* get_root_task()
 {
-    return &task_list[0];
+    return &root_task_pcb;
 }
 
-static int get_empty_pcb()
+static pcb_t* get_empty_pcb()
 {
-    int task_idx;
-    //pcb_t *new_task = NULL;
+    pcb_t* pcb = kbrk(sizeof (pcb_t));
 
-    for(task_idx=1;task_idx < MAX_TASK_NUM;task_idx++)
-    {
-        if(task_list[task_idx].pid == 0)    //无任务
-        {
-            return task_idx;
-        }
-    }
-
-    return 0;
+    return pcb;
 }
 
 static void clock_int(int vector)
@@ -84,17 +75,17 @@ void task_init()
 {
     printk("[task]init now!\n");
     // 手动加载进程 0
-    task_list[0].pid = 0;
-    task_list[0].next = &task_list[0];  // 循环链表 自己指向自己
-    task_list[0].dpl = 0;
+    root_task_pcb.pid = 0;
+    root_task_pcb.next = &root_task_pcb;  // 循环链表 自己指向自己
+    root_task_pcb.dpl = 0;
 
-    task_list[0].mm = &mm_list[0];
+    root_task_pcb.mm = &root_mm;
 
     // 内存描述符初始化
-    init_mm_struct(task_list[0].mm);
+    init_mm_struct(&root_mm);
 
     process_num++;
-    running = &task_list[0];
+    running = &root_task_pcb;
 
     // 配置时钟中断
     assert(CLOCK_INT_COUNT_PER_SECOND >= 19);
@@ -131,14 +122,10 @@ task_t* task_create(void *entry) {
 
     set_interrupt_state(0); // 保证原子操作 否则可能会调度出错
 
-    u32 task_idx = get_empty_pcb();
-    pcb_t* new_task = &task_list[task_idx];
-
-    if(task_idx == 0)
-        goto fail;
+    pcb_t* new_task = get_empty_pcb();;
 
     //与主进程共享cr3
-    new_task->mm = task_list[0].mm;
+    new_task->mm = root_task_pcb.mm;
 
     // 为新任务设置内存
     void* stack_top = sbrk(new_task->mm,PAGE_SIZE) + PAGE_SIZE;  // 栈顶
@@ -170,7 +157,7 @@ void task_exit()
 {
     set_interrupt_state(0);
 
-    task_t* back = &task_list[0];// 任务0是常驻任务 从这个地方开始寻找的时间总是比从running开始快得多
+    task_t* back = get_root_task();// 任务0是常驻任务 从这个地方开始寻找的时间总是比从running开始快得多
     while (back->next != running){
        back = back->next;   // 找到自己的上一个任务
     }
@@ -193,15 +180,11 @@ pid_t exec(void* function,size_t len)
     if(process_num > MAX_TASK_NUM) // 任务是否超过最大限度
         goto fail;
 
-    // 寻找未使用的PCB
-    u32 task_idx = get_empty_pcb();
-    pcb_t* new_task = &task_list[task_idx];
-
-    if(task_idx == 0)
-       goto fail;
+    // 获取一个PCB
+    pcb_t* new_task = get_empty_pcb();
 
     // 初始化mm
-    new_task->mm = &mm_list[task_idx];
+    new_task->mm = kbrk(sizeof (struct mm_struct));
     struct mm_struct* child_mm = new_task->mm;
     init_user_mm_struct(child_mm);
 
@@ -250,7 +233,7 @@ pid_t exec(void* function,size_t len)
 
     set_interrupt_state(1); //  任务创建完毕
 
-    return task_list[task_idx].pid;
+    return new_task->pid;
 
 fail:
     return -1;
