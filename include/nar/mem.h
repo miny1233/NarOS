@@ -42,8 +42,6 @@ void* get_paddr(void* vaddr);
 
 void* kbrk(int);
 
-void* kalloc_page(int page);
-
 //为mmap预留
 struct vm_area_struct{
   u32 start_page;

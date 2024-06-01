@@ -11,6 +11,7 @@
 #include <string.h>
 #include <memory.h>
 #include <nar/task.h>
+#include "nar/heap.h"
 
 static void scan_disk()
 {
@@ -29,23 +30,21 @@ static void scan_disk()
     }
 }
 
-struct file_system_type* file_system_list[FS_LIST_SIZE];
+struct file_system_type* file_system_list;
+struct super_block* super_block_lists;
 
 //注册一个文件系统
 int file_system_register(struct file_system_type* filesystem)
 {
-    for(int i = 0;i < FS_LIST_SIZE ;i++) {
-       if (file_system_list[i] != NULL)
-       {
-           file_system_list[i] = filesystem;
-       }
-    }
+
     return -1;
 }
 
-
 void vfs_init()
 {
+    // 注册根文件系统
+    file_system_list = kalloc(sizeof (struct file_system_type));
+
 
 }
 

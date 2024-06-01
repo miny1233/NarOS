@@ -244,7 +244,7 @@ static void keyboard_wait()
     } while (state & 0x02); // 读取键盘缓冲区，直到为空
 }
 
-void keyboard_handler(u32 vector)
+static void keyboard_handler(u32 vector)
 {
     send_eoi(vector);
     // 接收扫描码
@@ -327,4 +327,10 @@ void keyboard_handler(u32 vector)
         return;
     printk("%c",ch); //test
     // LOGK("keydown %c \n", ch);
+}
+
+void keyboard_init()
+{
+    interrupt_hardler_register(0x21,keyboard_handler);
+    set_interrupt_mask(1,1); //启动键盘中断
 }

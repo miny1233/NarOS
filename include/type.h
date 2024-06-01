@@ -5,6 +5,8 @@
 #define EOS 0
 
 typedef unsigned int size_t;
+typedef int ssize_t;
+
 typedef unsigned long long int u64;
 typedef unsigned int u32;
 typedef unsigned short u16;

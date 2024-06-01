@@ -40,16 +40,13 @@ int init(unsigned long magic, multiboot_info_t* _info)
     memory_init();      // 内存管理
     task_init();        // 进程管理
     heap_init();        // 堆内存管理
-    //vfs_init();       // 文件系统初始化
+    vfs_init();       // 文件系统初始化
     //pipe_init();
     //cpu_init();
 
     // 外围设备
-    interrupt_hardler_register(0x21,keyboard_handler);
-    set_interrupt_mask(1,1); //启动键盘中断
+    keyboard_init();
 
-    //LOG("start child proc!\n");
-    //task_create(child);
     pid_t pid = exec(child,PAGE_SIZE);
     printk("child pid is %d\n",pid);
     //初始化完毕，初始化程序变idle程序
@@ -67,9 +64,5 @@ void child()
     _syscall1(0,ret,myself);
 
     int *ptr = NULL;
-    //*ptr =0;
 
-    //while(1);
-
-    //task_exit();
 }
