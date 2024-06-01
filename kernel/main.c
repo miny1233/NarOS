@@ -12,6 +12,7 @@
 #include <nar/multiboot.h>
 #include <nar/globa.h>
 #include <nar/fs/vfs.h>
+#include <nar/heap.h>
 #include <syscall.h>
 
 void child();
@@ -37,7 +38,8 @@ int init(unsigned long magic, multiboot_info_t* _info)
     globa_init();       // 切换内核描述符表 设置TSS
     interrupt_init();   // 中断处理
     memory_init();      // 内存管理
-    task_init();        // 任务调度
+    task_init();        // 进程管理
+    heap_init();        // 堆内存管理
     //vfs_init();       // 文件系统初始化
     //pipe_init();
     //cpu_init();

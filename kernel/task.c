@@ -6,6 +6,7 @@
 #include <nar/mem.h>
 #include <memory.h>
 #include <nar/panic.h>
+#include <nar/heap.h>
 #include <errno.h>
 
 task_t *running;        // 当前运行的任务
@@ -31,7 +32,7 @@ task_t* get_root_task()
 
 static pcb_t* get_empty_pcb()
 {
-    pcb_t* pcb = kbrk(sizeof (pcb_t));
+    pcb_t* pcb = kalloc(sizeof (pcb_t));
 
     return pcb;
 }
@@ -70,7 +71,7 @@ void schedule()
     context_switch(back_task, running);
 }
 
-// 以下是初始化过程
+// 以下是初始化过程 禁止使用堆内存
 void task_init()
 {
     printk("[task]init now!\n");
@@ -122,7 +123,7 @@ task_t* task_create(void *entry) {
 
     set_interrupt_state(0); // 保证原子操作 否则可能会调度出错
 
-    pcb_t* new_task = get_empty_pcb();;
+    pcb_t* new_task = get_empty_pcb();
 
     //与主进程共享cr3
     new_task->mm = root_task_pcb.mm;
@@ -165,8 +166,9 @@ void task_exit()
     running->pid = 0;   //标记任务无效
     process_num--;  // 运行任务数-1
 
-    // 释放内核堆栈
-    //put_page(running->mm.kernel_stack);
+    //释放内存
+    kfree(running->mm);
+    kfree(running);
 
     set_interrupt_state(1);
     //任务被移除，需要强制切换来更新
@@ -184,7 +186,7 @@ pid_t exec(void* function,size_t len)
     pcb_t* new_task = get_empty_pcb();
 
     // 初始化mm
-    new_task->mm = kbrk(sizeof (struct mm_struct));
+    new_task->mm = kalloc(sizeof (struct mm_struct));
     struct mm_struct* child_mm = new_task->mm;
     init_user_mm_struct(child_mm);
 

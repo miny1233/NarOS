@@ -7,6 +7,7 @@
 #include <math.h>
 #include <nar/task.h>
 #include <bitmap.h>
+#include <nar/heap.h>
 
 u32 memory_base = 0;  //由于GRUB把内核载入到了1M处，为了保证安全至少从2M开始有效
 u32 memory_size = 0;
@@ -320,6 +321,7 @@ void* sbrk(struct mm_struct* mm,int increase)
 
 void* kbrk(int size)
 {
+    LOG("kbrk called size is: %d\n",size);
     void* ret = ksbrk;
     ksbrk += size;
     return ret;
@@ -328,7 +330,7 @@ void* kbrk(int size)
 void init_user_mm_struct(struct mm_struct* mm)
 {
     // 获得页目录内存
-    size_t pde_mem = (size_t)kbrk(2 * PAGE_SIZE);
+    size_t pde_mem = (size_t)kalloc(2 * PAGE_SIZE);
     // 4KB对齐
     pde_mem += PAGE_SIZE;
     pde_mem &= ~(0xfff);
