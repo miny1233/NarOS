@@ -59,6 +59,9 @@ void vfs_init()
     struct super_block* root_sb = super_block_lists;
 
     root_sb->s_op->mkdir(root_sb,"/");
-    root_sb->s_op->mknod(root_sb,"/stdout",1,1);
+    root_sb->s_op->mknod(root_sb,"/stdout",DEV_TTY,0);
+
+    struct inode* tty = root_sb->s_op->open(root_sb,"/stdout23",0);
+    tty->i_op->write(tty,"Hello World",0);
 }
 

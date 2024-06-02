@@ -40,7 +40,7 @@ struct inode {
 struct inode_operations
 {
     ssize_t (*read) (struct inode *, char *, size_t);
-
+    ssize_t (*write) (struct inode *,const char *,size_t);
 };
 
 struct super_block
@@ -57,7 +57,7 @@ struct super_block
 struct super_operations
 {
     struct inode* (*open)(struct super_block*,const char* path,char mode);
-    void (*close)(struct super_block*,struct inode*);
+    int (*close)(struct super_block*,struct inode*);
 
     int (*mkdir)(struct super_block*,const char* path);
     int (*mknod)(struct super_block*,const char*,int subtype,int nr);

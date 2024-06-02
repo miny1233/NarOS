@@ -13,6 +13,11 @@ device_t *device_get(dev_t dev)
     return device;
 }
 
+dev_t device_id_get(const device_t* device)
+{
+    return device - device_list;
+}
+
 device_t *device_find(int subtype, idx_t idx)
 {
     idx_t nr = 0;   // 从设备号

@@ -71,9 +71,52 @@ static int add_new_inode(struct super_block* sb,const char* path,struct rootfs_i
     return 0;
 }
 
+// 元数据节点操作
+
+static ssize_t rootfs_write(struct inode * inode,const char *data,size_t len)
+{
+    struct rootfs_inode* rootfs_i = inode->data;
+    // 目前只支持读写设备
+    if (rootfs_i->type != ROOTFS_DEV)
+    {
+        return -1;
+    }
+
+    struct rootfs_dev_node* dev_i = rootfs_i->data;
+    if (!dev_i->dev)
+    {
+        dev_i->dev = device_id_get(device_find(dev_i->subtype,dev_i->nr));
+    }
+
+    return device_write(dev_i->dev,(void*)data,len,0,0);
+}
+
+static struct inode_operations i_op = {
+        .read = NULL,
+        .write = rootfs_write,
+};
+
+// 超级块操作函数定义
+
 static struct inode* rootfs_open(struct super_block* sb,const char* path,char mode)
 {
-    return NULL;
+    struct rootfs_inode* r_inode = find_inode_by_path(sb,path);
+    if (!r_inode)
+        return NULL;
+
+    struct inode* i = kalloc(sizeof (struct inode));
+
+    i->data = r_inode;
+    i->i_op = &i_op;
+    i->fno = NULL;
+
+    return i;
+}
+
+static int rootfs_close(struct super_block* sb,struct inode* inode)
+{
+    kfree(inode);
+    return 0;
 }
 
 static int rootfs_mkdir(struct super_block* sb,const char* path)
@@ -163,11 +206,11 @@ static int rootfs_mknod(struct super_block* sb,const char* path,int subtype,int 
     return add_new_inode(sb,path,dev_inode);
 }
 
-struct super_operations rootfs_op = {
+static struct super_operations rootfs_op = {
         .mkdir = rootfs_mkdir,
         .mknod = rootfs_mknod,
         .open = rootfs_open,
-        .close = NULL,
+        .close = rootfs_close,
         .mount = NULL,
 };
 
