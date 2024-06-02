@@ -17,13 +17,20 @@ struct file_system_type
     int fs_flags;
     struct file_system_type* next;
 
-    void* data; // 给文件系统准备的存放额外数据
-
     struct super_block *(*get_sb) (struct file_system_type*, const char* dev_path);
     void (*kill_sb) (struct file_system_type*,struct super_block*);
 };
 
+#define F_DIR 0
+#define F_FILE 1
+
+struct file_info {
+    char f_attribute;
+    char name[64];
+};
+
 struct inode {
+    struct file_info* fno;
 
     void* data;
 
@@ -52,7 +59,8 @@ struct super_operations
     struct inode* (*open)(struct super_block*,const char* path,char mode);
     void (*close)(struct super_block*,struct inode*);
 
-    void (*mount)(struct super_block*,const char* mount_path,const char* dev_path,const char* fs_name);
+    int (*mkdir)(struct super_block*,const char* path);
+    int (*mount)(struct super_block*,const char* mount_path,const char* dev_path,const char* fs_name);
 };
 
 

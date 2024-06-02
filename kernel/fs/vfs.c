@@ -11,7 +11,10 @@
 #include <string.h>
 #include <memory.h>
 #include <nar/task.h>
-#include "nar/heap.h"
+#include <nar/heap.h>
+
+// rootfs
+#include "rootfs.h"
 
 static void scan_disk()
 {
@@ -36,15 +39,23 @@ struct super_block* super_block_lists;
 //注册一个文件系统
 int file_system_register(struct file_system_type* filesystem)
 {
-
     return -1;
 }
 
 void vfs_init()
 {
     // 注册根文件系统
-    file_system_list = kalloc(sizeof (struct file_system_type));
+    file_system_list = &rootfs_type;
+    // 挂载文件系统
+    super_block_lists = rootfs_type.get_sb(&rootfs_type,"");
+    if (!super_block_lists)
+    {
+        LOG("rootfs mount fail!\n");
+        return;
+    }
 
-
+    LOG("rootfs mounted!\n");
+    // 创建根
+    super_block_lists->s_op->mkdir(super_block_lists,"/");
 }
 
