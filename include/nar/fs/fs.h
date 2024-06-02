@@ -60,6 +60,7 @@ struct super_operations
     void (*close)(struct super_block*,struct inode*);
 
     int (*mkdir)(struct super_block*,const char* path);
+    int (*mknod)(struct super_block*,const char*,int subtype,int nr);
     int (*mount)(struct super_block*,const char* mount_path,const char* dev_path,const char* fs_name);
 };
 

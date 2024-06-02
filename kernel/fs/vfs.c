@@ -56,6 +56,9 @@ void vfs_init()
 
     LOG("rootfs mounted!\n");
     // 创建根
-    super_block_lists->s_op->mkdir(super_block_lists,"/");
+    struct super_block* root_sb = super_block_lists;
+
+    root_sb->s_op->mkdir(root_sb,"/");
+    root_sb->s_op->mknod(root_sb,"/stdout",1,1);
 }
 

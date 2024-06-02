@@ -1,5 +1,5 @@
 #include <memory.h>
-void memcpy(void* des,void* sou,u32 len)
+void memcpy(void* des,const void* sou,u32 len)
 {
     asm volatile(
             "cld\n"
