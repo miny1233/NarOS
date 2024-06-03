@@ -46,7 +46,7 @@ void vfs_init()
 {
     // 注册根文件系统
     file_system_list = &rootfs_type;
-    // 挂载文件系统
+    // 挂载文件系统取得超级块
     super_block_lists = rootfs_type.get_sb(&rootfs_type,"");
     if (!super_block_lists)
     {
@@ -59,9 +59,10 @@ void vfs_init()
     struct super_block* root_sb = super_block_lists;
 
     root_sb->s_op->mkdir(root_sb,"/");
-    root_sb->s_op->mknod(root_sb,"/stdout",DEV_TTY,0);
+    root_sb->s_op->mkdir(root_sb,"/dev/");
+    root_sb->s_op->mknod(root_sb,"/dev/stdout",DEV_TTY,0);
 
-    struct inode* tty = root_sb->s_op->open(root_sb,"/stdout23",0);
-    tty->i_op->write(tty,"Hello World",0);
+    struct inode* tty = root_sb->s_op->open(root_sb,"/dev/stdout",0);
+    tty->i_op->write(tty,"Hello World\n",0);
 }
 
