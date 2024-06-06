@@ -228,15 +228,16 @@ static void page_int(int vector,
 
     LOG("fault virtual address 0x%p\n",vaddr);
 
+    int dpl = cs == 8 ? 0 : 3;
     //用户态态故障 且 访问内存位置不合法
-    if (running->dpl == 3 && vaddr < USER_VMA_START)
+    if (dpl == 3 && vaddr < USER_VMA_START)
         goto segment_error;
 
     // 取出内存描述符
     struct mm_struct* mm = proxy_mm ? proxy_mm : running->mm;
 
     //检查是否在堆内存 内核进程跳过检查
-    if(running->dpl == 0 || (vaddr >= mm->brk && vaddr < mm->sbrk))
+    if(dpl == 0 || (vaddr >= mm->brk && vaddr < mm->sbrk))
         goto check_passed;
     //检查 virtual memory area （暂未启用）
     goto segment_error;
@@ -299,7 +300,7 @@ ok:
 segment_error:
     printk("segment fault!\n");
 fault:
-    if(running->dpl == 0)
+    if(dpl == 0)
         panic("page fault!\n");
     else
         task_exit();

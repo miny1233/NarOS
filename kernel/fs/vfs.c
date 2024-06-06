@@ -33,14 +33,54 @@ static void scan_disk()
     }
 }
 
-struct file_system_type* file_system_list;
-struct super_block* super_block_lists;
+struct file_system_type* file_system_list = NULL;
+struct super_block* super_block_lists = NULL;
 
 //注册一个文件系统
 int file_system_register(struct file_system_type* filesystem)
 {
     return -1;
 }
+
+struct inode* open(const char* path,char mode)
+{
+    struct super_block* sb = super_block_lists;
+    // 默认使用第一个超级快
+    if (!sb)
+        return NULL;
+    if (!sb->s_op->open)
+        return NULL;
+
+    return super_block_lists->s_op->open(sb,path,mode);
+}
+
+// syscall
+
+int sys_open(const char* path,char mode)
+{
+    // 取出fd表
+    struct inode** list = running->fd;
+    struct inode* newInode = NULL;
+    int fd = 0;
+
+    for (;fd < FD_NR;fd++)
+    {
+        if (list[fd] == NULL) {
+            newInode = list[fd];
+            break;
+        }
+    }
+    // 打开的文件过多
+    if (fd >= FD_NR)
+        return -1;
+
+    newInode = open(path,mode);
+    if (!newInode)
+        return -1;
+
+    return fd;
+}
+
 
 void vfs_init()
 {
@@ -65,4 +105,3 @@ void vfs_init()
     struct inode* tty = root_sb->s_op->open(root_sb,"/dev/stdout",0);
     tty->i_op->write(tty,"Hello World\n",0);
 }
-

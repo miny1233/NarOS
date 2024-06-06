@@ -16,6 +16,9 @@ typedef int fd_t;   //文件描述
 void vfs_init();
 int file_system_register(struct file_system_type* filesystem);
 
-int open(char* path);
+struct inode* open(const char* path,char mode);
+
+// syscall
+int sys_open(const char* path,char mode);
 
 #endif //NAROS_VFS_H

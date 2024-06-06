@@ -43,9 +43,9 @@ int init(unsigned long magic, multiboot_info_t* _info)
     vfs_init();       // 文件系统初始化
     //pipe_init();
     //cpu_init();
-
     // 外围设备
     keyboard_init();
+
 
     pid_t pid = exec(child,PAGE_SIZE);
     printk("child pid is %d\n",pid);
@@ -55,14 +55,12 @@ int init(unsigned long magic, multiboot_info_t* _info)
 
 void child()
 {
-
-    char str[] = "Hello World!\n";
-    char myself[] = "I am a Child\n";
-
-    //printf(str);
     int ret;
-    _syscall1(0,ret,myself);
+    char str[] = "fd is  !\n";
+    char path[] = "/dev/stdout";
+    _syscall2(1,ret,path,0);
 
-    int *ptr = NULL;
+    str[6] = ret + '0';
+    _syscall1(0,ret,str);
 
 }

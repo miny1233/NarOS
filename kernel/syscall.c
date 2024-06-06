@@ -5,11 +5,13 @@
 #include <nar/printk.h>
 #include <nar/interrupt.h>
 #include <nar/panic.h>
+#include <nar/fs/vfs.h>
 //这里声明系统调用函数
 void sys_log(const char*);
 //这里定义指针
 void* syscall_list[] = {
         sys_log,
+        sys_open,
 };
 
 void system_call_handle(int vector,

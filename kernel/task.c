@@ -34,6 +34,9 @@ static pcb_t* get_empty_pcb()
 {
     pcb_t* pcb = kalloc(sizeof (pcb_t));
 
+    if(pcb)
+        memset(pcb,0,sizeof (pcb_t));
+
     return pcb;
 }
 

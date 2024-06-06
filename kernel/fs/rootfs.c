@@ -40,7 +40,7 @@ struct path_to_inode
 
 static struct rootfs_inode* find_inode_by_path(struct super_block* sb,const char* path)
 {
-    struct path_to_inode* map = sb->data;
+    const struct path_to_inode* map = sb->data;
     for (;;map = map->next)
     {
         if (strcmp(map->path,path) == 0)
@@ -61,7 +61,7 @@ static int add_new_inode(struct super_block* sb,const char* path,struct rootfs_i
     struct path_to_inode* empty_pti = sb->data;
     for (;empty_pti->next != NULL;empty_pti = empty_pti->next);
 
-    empty_pti->next = kalloc(sizeof (struct rootfs_inode));
+    empty_pti->next = kalloc(sizeof (struct path_to_inode));
     empty_pti = empty_pti->next;
 
     empty_pti->next = NULL;
