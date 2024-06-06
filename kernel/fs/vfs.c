@@ -42,7 +42,7 @@ int file_system_register(struct file_system_type* filesystem)
     return -1;
 }
 
-struct inode* open(const char* path,char mode)
+static inline struct inode* open(const char* path,char mode)
 {
     struct super_block* sb = super_block_lists;
     // 默认使用第一个超级快
@@ -60,27 +60,38 @@ int sys_open(const char* path,char mode)
 {
     // 取出fd表
     struct inode** list = running->fd;
-    struct inode* newInode = NULL;
+    struct inode** newInode = NULL;
     int fd = 0;
 
     for (;fd < FD_NR;fd++)
     {
         if (list[fd] == NULL) {
-            newInode = list[fd];
+            newInode = &list[fd];
             break;
         }
     }
     // 打开的文件过多
-    if (fd >= FD_NR)
+    if (newInode == NULL || fd >= FD_NR)
         return -1;
 
-    newInode = open(path,mode);
-    if (!newInode)
+    *newInode = open(path,mode);
+    if (!*newInode)
         return -1;
 
     return fd;
 }
 
+int sys_write(int fd,const char* buf,size_t len)
+{
+    struct inode* file = running->fd[fd];
+    if (!file)
+        return -1;
+
+    if(!file->i_op->write)
+        return -1;
+
+    return file->i_op->write(file,buf,len);
+}
 
 void vfs_init()
 {

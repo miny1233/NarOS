@@ -52,15 +52,14 @@ int init(unsigned long magic, multiboot_info_t* _info)
     //初始化完毕，初始化程序变idle程序
     return 0;
 }
-
+// 用户态调试函数
 void child()
 {
-    int ret;
-    char str[] = "fd is  !\n";
-    char path[] = "/dev/stdout";
-    _syscall2(1,ret,path,0);
+    int fd;
+    _syscall2(1,fd,"/dev/stdout",0);
 
-    str[6] = ret + '0';
-    _syscall1(0,ret,str);
+    printf("fd is %d\n",fd);
+    printf("Hello World!\n");
 
+    while(1);
 }

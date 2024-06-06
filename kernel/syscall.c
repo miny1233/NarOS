@@ -12,6 +12,7 @@ void sys_log(const char*);
 void* syscall_list[] = {
         sys_log,
         sys_open,
+        sys_write,
 };
 
 void system_call_handle(int vector,

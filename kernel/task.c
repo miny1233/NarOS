@@ -208,7 +208,7 @@ pid_t exec(void* function,size_t len)
     stack->vector = 0x20;
     stack->ebp = (u32) stack_top;
     stack->esp = 0;    //IA32 popa忽略这个值
-    stack->eip = (u32) entry;
+    stack->eip = (u32) function; // 注意正常执行需要使用entry作为入口
 
     //设置段寄存器
     stack->cs = USER_CODE_SELECTOR;

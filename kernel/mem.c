@@ -424,7 +424,7 @@ static void kernel_pte_init()
     // 将所有的内核页表都映射上 保证内核页面一定是共享的
     for (size_t idx = 0;idx < 256;idx++)
     {
-        entry_init(page_dic + idx, IDX(page_tables[idx]),KERNEL_DPL);
+        entry_init(page_dic + idx, IDX(page_tables[idx]),USER_DPL);
     }
     // 将内核的现在占用的空间直接映射 32MB
     for (size_t idx = 0;idx < 8;idx++)
@@ -434,7 +434,7 @@ static void kernel_pte_init()
         {
             static size_t offset = 0;
             // 每次映射4KB
-            entry_init(&page_tables[idx][mapping_count],offset++,KERNEL_DPL);
+            entry_init(&page_tables[idx][mapping_count],offset++,USER_DPL);
         }
     }
 
