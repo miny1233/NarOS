@@ -55,8 +55,8 @@ void schedule()
 
     next_task:
     running = running->next;
-    // if(process_num > 1 && running->pid == 0)
-      //  goto next_task;
+    if(process_num > 1 && running->pid == 0)
+        goto next_task;
 
     if(back_task == running)
         return;

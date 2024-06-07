@@ -52,28 +52,27 @@ int init(unsigned long magic, multiboot_info_t* _info)
     //初始化完毕，初始化程序变idle程序
     return 0;
 }
+
+#include <unistd.h>
 // 用户态调试函数
 void child()
 {
-    int fd,invaild;
-    _syscall2(1,fd,"/dev/stdout",0);    // sys_open 打开标准输出
+    open("/dev/stdout",0);   // sys_open 打开标准输出
     // 打开键盘
-    _syscall2(1,fd,"/dev/input",0);     // sys_open 打开键盘
+    int fd = open("/dev/input",0);     // sys_open 打开键盘
 
     printf("fd is %d\n",fd);
 
     for (int count = 0;count < 5;)
     {
         char buf;
-        int len;
-        _syscall3(2,len,fd,&buf,1); // sys_read 读键盘
+        int len = read(fd,&buf,1); // sys_read 读键盘
 
         if(len) {
             printf("get input %c\n", buf);
             count++;
         }
-        _syscall0(5,invaild);    // sys_yield
+        yield();    // sys_yield
     }
-
-    _syscall0(4,invaild);    // sys_exit
+   exit();    // sys_exit
 }

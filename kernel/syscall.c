@@ -6,7 +6,7 @@
 #include <nar/interrupt.h>
 #include <nar/panic.h>
 #include <nar/fs/vfs.h>
-#include "nar/task.h"
+#include <nar/task.h>
 
 // 测试用系统调用
 void sys_log(const char*);
@@ -20,6 +20,7 @@ void* syscall_list[] = {
         sys_yield,
 };
 
+__attribute__((unused))
 void system_call_handle(int vector,
                         u32 edi,u32 esi,u32 ebp,u32 esp,
                         u32 ebx,u32 edx,u32 ecx,u32 eax)

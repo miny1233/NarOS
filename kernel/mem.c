@@ -52,12 +52,20 @@ void flush_tlb(void* vaddr)
 
 void* get_cr2()
 {
+    void* ret;
     // 直接将 mov eax, cr2，返回值在 eax 中
-    asm volatile("movl %cr2, %eax\n");
+    asm volatile(
+            "movl %%cr2, %%eax\n"
+            :"=a"(ret));
+    return ret;
 }
 
 void* get_cr3(){
-    asm volatile("movl %cr3,%eax\n");
+    void* ret;
+    asm volatile(
+            "movl %%cr3,%%eax\n"
+            :"=a"(ret));
+    return ret;
 }
 
 void set_cr3(void* pde){
@@ -66,7 +74,9 @@ void set_cr3(void* pde){
 
 u32 get_cr4()
 {
-    asm volatile("movl %cr4,%eax\n");
+    u32 ret;
+    asm volatile("movl %%cr4,%%eax\n":"=a"(ret));
+    return ret;
 }
 
 void set_cr4(u32 value)
