@@ -49,6 +49,7 @@ dev_t device_install(int type, int subtype,char *name,
                      void *ioctl, void *read, void *write);
 
 //主设备号 与 从设备号
+device_t *device_get(dev_t dev);
 device_t *device_find(int subtype, idx_t idx);
 dev_t device_id_get(const device_t* device);
 

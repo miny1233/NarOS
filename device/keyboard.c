@@ -1,6 +1,8 @@
 #include"../include/type.h"
 #include <nar/interrupt.h>
 #include <nar/printk.h>
+#include <nar/dev.h>
+#include <nar/fs/vfs.h>
 
 #define KEYBOARD_DATA_PORT 0x60
 #define KEYBOARD_CTRL_PORT 0x64
@@ -14,6 +16,9 @@
 
 void outb(u16 des,u8 value);
 u8 inb(u16 des);
+
+char buffer[1];
+char buf_ful = 0;
 
 typedef enum
 {
@@ -325,12 +330,31 @@ static void keyboard_handler(u32 vector)
 
     if (ch == INV)
         return;
-    printk("%c",ch); //test
+    //printk("%c",ch); //test
+    if (!buf_ful) {
+        buffer[0] = ch;
+        buf_ful = 1;
+    }
     // LOGK("keydown %c \n", ch);
+}
+
+static int keyboard_read(void *dev, void *buf, size_t count, idx_t idx, int flags)
+{
+    if (!buf_ful)
+        return 0;
+
+    *(char *)buf = buffer[0];
+    buf_ful = 0;
+
+    return 1;
 }
 
 void keyboard_init()
 {
     interrupt_hardler_register(0x21,keyboard_handler);
     set_interrupt_mask(1,1); //启动键盘中断
+
+    device_install(DEV_CHAR,DEV_KEYBOARD,"main keyboard",NULL, keyboard_read,NULL);
+    // vfs注册设备
+    sys_mknod("/dev/input",DEV_KEYBOARD, 0);
 }

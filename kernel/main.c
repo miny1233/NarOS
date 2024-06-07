@@ -57,9 +57,21 @@ void child()
 {
     int fd;
     _syscall2(1,fd,"/dev/stdout",0);
+    // 打开键盘
+    _syscall2(1,fd,"/dev/input",0);
 
     printf("fd is %d\n",fd);
-    printf("Hello World!\n");
+
+    for (;;)
+    {
+        char buf;
+        int len;
+        _syscall3(2,len,fd,&buf,1);
+
+        if(len)
+            printf("get input %c\n",buf);
+    }
 
     while(1);
+    //task_exit();
 }

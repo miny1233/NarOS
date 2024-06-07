@@ -72,6 +72,20 @@ static int add_new_inode(struct super_block* sb,const char* path,struct rootfs_i
 }
 
 // 元数据节点操作
+static ssize_t rootfs_read(struct inode* inode,char* data, size_t len)
+{
+    struct rootfs_inode* rootfs_i = inode->data;
+
+    if (rootfs_i->type != ROOTFS_DEV)
+        return -1;
+
+    struct rootfs_dev_node* dev_i = rootfs_i->data;
+
+    if (!dev_i->dev)
+        dev_i->dev = device_id_get(device_find(dev_i->subtype,dev_i->nr));
+
+    return device_read(dev_i->dev,(void*) data,len,0,0);
+}
 
 static ssize_t rootfs_write(struct inode * inode,const char *data,size_t len)
 {
@@ -92,7 +106,7 @@ static ssize_t rootfs_write(struct inode * inode,const char *data,size_t len)
 }
 
 static struct inode_operations i_op = {
-        .read = NULL,
+        .read = rootfs_read,
         .write = rootfs_write,
 };
 

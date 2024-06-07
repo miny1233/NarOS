@@ -6,13 +6,17 @@
 #include <nar/interrupt.h>
 #include <nar/panic.h>
 #include <nar/fs/vfs.h>
-//这里声明系统调用函数
+#include "nar/task.h"
+
+// 测试用系统调用
 void sys_log(const char*);
 //这里定义指针
 void* syscall_list[] = {
         sys_log,
         sys_open,
+        sys_read,
         sys_write,
+        sys_yield,
 };
 
 void system_call_handle(int vector,

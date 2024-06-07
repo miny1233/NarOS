@@ -15,7 +15,7 @@ int printf(const char *fmt, ...)
     va_end(args);
 
     int ret;
-    _syscall3(2,ret,0,buf,0); // sys_logs
+    _syscall3(3,ret,0,buf,0); // sys_write
 
     return i;
 }

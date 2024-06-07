@@ -54,6 +54,20 @@ static inline struct inode* open(const char* path,char mode)
     return super_block_lists->s_op->open(sb,path,mode);
 }
 
+int sys_mkdir(const char* path)
+{
+    struct super_block* sb = super_block_lists;
+
+    return sb->s_op->mkdir(sb,path);
+}
+
+int sys_mknod(const char* path,int subtype,int nr)
+{
+    struct super_block* sb = super_block_lists;
+
+    return sb->s_op->mknod(sb,path,subtype,nr);
+}
+
 // syscall
 
 int sys_open(const char* path,char mode)
@@ -79,6 +93,17 @@ int sys_open(const char* path,char mode)
         return -1;
 
     return fd;
+}
+int sys_read(int fd,char* buf,size_t len)
+{
+    struct inode* file = running->fd[fd];
+    if (!file)
+        return -1;
+
+    if (!file->i_op->read)
+        return -1;
+
+    return file->i_op->read(file,buf,len);
 }
 
 int sys_write(int fd,const char* buf,size_t len)
