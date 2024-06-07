@@ -16,6 +16,7 @@ void* syscall_list[] = {
         sys_open,
         sys_read,
         sys_write,
+        sys_exit,
         sys_yield,
 };
 

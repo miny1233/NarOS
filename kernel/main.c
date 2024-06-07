@@ -55,23 +55,25 @@ int init(unsigned long magic, multiboot_info_t* _info)
 // 用户态调试函数
 void child()
 {
-    int fd;
-    _syscall2(1,fd,"/dev/stdout",0);
+    int fd,invaild;
+    _syscall2(1,fd,"/dev/stdout",0);    // sys_open 打开标准输出
     // 打开键盘
-    _syscall2(1,fd,"/dev/input",0);
+    _syscall2(1,fd,"/dev/input",0);     // sys_open 打开键盘
 
     printf("fd is %d\n",fd);
 
-    for (;;)
+    for (int count = 0;count < 5;)
     {
         char buf;
         int len;
-        _syscall3(2,len,fd,&buf,1);
+        _syscall3(2,len,fd,&buf,1); // sys_read 读键盘
 
-        if(len)
-            printf("get input %c\n",buf);
+        if(len) {
+            printf("get input %c\n", buf);
+            count++;
+        }
+        _syscall0(5,invaild);    // sys_yield
     }
 
-    while(1);
-    //task_exit();
+    _syscall0(4,invaild);    // sys_exit
 }
