@@ -6,6 +6,7 @@
 #include "memory.h"
 #include "string.h"
 #include <nar/heap.h>
+#include <math.h>
 #include <nar/fs/fs.h>
 
 
@@ -27,6 +28,7 @@ struct rootfs_dev_node {
 };
 struct rootfs_mount_node {
     struct super_block* mount_sb;
+    char prefix[64];
 };
 
 struct rootfs_inode {
@@ -42,12 +44,23 @@ struct path_to_inode
     struct rootfs_inode* file;
 };
 
+static inline int min(int a,int b)
+{
+    return a < b ? a : b;
+}
+
 static struct rootfs_inode* find_inode_by_path(struct super_block* sb,const char* path)
 {
     const struct path_to_inode* map = sb->data;
     for (;;map = map->next)
     {
         if (strcmp(map->path,path) == 0)
+        {
+            return map->file;
+        }
+        // mount的文件只需要前缀匹配
+        int prefix_len = (int)strlen(map->path);
+        if (strncmp(map->path,path,prefix_len) == 0 && map->file->type == ROOTFS_MOUNT)
         {
             return map->file;
         }
@@ -121,6 +134,15 @@ static struct inode* rootfs_open(struct super_block* sb,const char* path,char mo
     struct rootfs_inode* r_inode = find_inode_by_path(sb,path);
     if (!r_inode)
         return NULL;
+
+    // 是mount路径则转发请求
+    if (r_inode->type == ROOTFS_MOUNT)
+    {
+        struct rootfs_mount_node* m_n = r_inode->data;
+        size_t prefix_o = strlen(m_n->prefix) - 1;
+
+        return m_n->mount_sb->s_op->open(m_n->mount_sb,path + prefix_o,mode);
+    }
 
     struct inode* i = kalloc(sizeof (struct inode));
 
@@ -224,9 +246,24 @@ static int rootfs_mknod(struct super_block* sb,const char* path,int subtype,int 
     return add_new_inode(sb,path,dev_inode);
 }
 
-int mount(struct super_block* sb,const char* mount_path,const char* dev_path,const char* fs_name)
+static int rootfs_mount(struct super_block* sb,const char* mount_path,const char* dev_path,struct file_system_type* fs)
 {
-    
+    struct super_block* empty = sb;
+    for (;empty->next != NULL;empty = empty->next);
+
+    struct super_block* new_fs_sb = fs->get_sb(fs,dev_path);
+    empty->next = new_fs_sb;
+
+    struct rootfs_mount_node* mount_node = kalloc(sizeof (struct rootfs_mount_node));
+    mount_node->mount_sb = new_fs_sb;
+    strcpy(mount_node->prefix,mount_path);
+
+    struct rootfs_inode* mount_i = kalloc(sizeof (struct rootfs_inode));
+    mount_i->type = ROOTFS_MOUNT;
+    mount_i->data = mount_node;
+    mount_i->file_size = sizeof (struct rootfs_mount_node);
+
+    return add_new_inode(sb,mount_path,mount_i);
 }
 
 static struct super_operations rootfs_op = {
@@ -234,7 +271,7 @@ static struct super_operations rootfs_op = {
         .mknod = rootfs_mknod,
         .open = rootfs_open,
         .close = rootfs_close,
-        .mount = NULL,
+        .mount = rootfs_mount,
 };
 
 static struct super_block* rootfs_get_sb (struct file_system_type* fs, const char* dev_path)

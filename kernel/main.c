@@ -62,5 +62,13 @@ void child()
     int fd = open("/dev/input",0);     // sys_open 打开键盘
     printf("fd is %d\n",fd);
 
+    int hello = open("/home/hello.text",O_RDONLY);
+    printf("hello fd: %d\n",hello);
+
+    char buf[512];
+    read(hello,buf,512);
+
+    printf(buf);
+
     exit();    // sys_exit
 }

@@ -42,7 +42,10 @@ int strncmp(const char *lhs, const char *rhs,int n)
         lhs++;
         rhs++;
     }
-    return *lhs < *rhs ? -1 : *lhs > *rhs;
+    if (n == 0)
+        return 0;
+
+    return *lhs < *rhs ? -1 : 1;
 }
 
 

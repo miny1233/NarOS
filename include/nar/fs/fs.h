@@ -68,7 +68,7 @@ struct super_operations
 
     int (*mkdir)(struct super_block*,const char* path);
     int (*mknod)(struct super_block*,const char*,int subtype,int nr);
-    int (*mount)(struct super_block*,const char* mount_path,const char* dev_path,const char* fs_name);
+    int (*mount)(struct super_block*,const char* mount_path,const char* dev_path,struct file_system_type* fs);
 };
 
 

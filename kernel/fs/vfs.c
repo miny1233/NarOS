@@ -150,12 +150,6 @@ void vfs_init()
     printk("register fatfs!\n");
     file_system_register(&fatfs_type);
 
-    // 理论第二个就是fatfs
-    struct super_block* fat_sb = file_system_list->next->get_sb(file_system_list->next,"");
-    printk("open nar!\n");
-    struct inode* fat_i = fat_sb->s_op->open(fat_sb,"hello.text",O_RDONLY);
-    printk("open nar inode is %p\n",fat_i);
-    char buf[50];
-    fat_i->i_op->read(fat_i,buf,50);
-    printk(buf);
+    // mount fatfs
+    root_sb->s_op->mount(root_sb,"/home/","/dev/disk",&fatfs_type);
 }
