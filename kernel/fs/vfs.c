@@ -15,6 +15,7 @@
 
 // rootfs
 #include "rootfs.h"
+#include "fat.h"
 
 static void scan_disk()
 {
@@ -39,7 +40,14 @@ struct super_block* super_block_lists = NULL;
 //注册一个文件系统
 int file_system_register(struct file_system_type* filesystem)
 {
-    return -1;
+    if (filesystem == NULL)
+        return -1;
+
+    struct file_system_type* node = file_system_list;
+    for (;node->next != NULL;node = node->next){}
+
+    node->next = filesystem;
+    return 0;
 }
 
 static inline struct inode* open(const char* path,char mode)
@@ -138,6 +146,16 @@ void vfs_init()
     root_sb->s_op->mkdir(root_sb,"/dev/");
     root_sb->s_op->mknod(root_sb,"/dev/stdout",DEV_TTY,0);
 
-    struct inode* tty = root_sb->s_op->open(root_sb,"/dev/stdout",0);
-    tty->i_op->write(tty,"Hello World\n",0);
+    // fatfs 测试
+    printk("register fatfs!\n");
+    file_system_register(&fatfs_type);
+
+    // 理论第二个就是fatfs
+    struct super_block* fat_sb = file_system_list->next->get_sb(file_system_list->next,"");
+    printk("open nar!\n");
+    struct inode* fat_i = fat_sb->s_op->open(fat_sb,"hello.text",O_RDONLY);
+    printk("open nar inode is %p\n",fat_i);
+    char buf[50];
+    fat_i->i_op->read(fat_i,buf,50);
+    printk(buf);
 }

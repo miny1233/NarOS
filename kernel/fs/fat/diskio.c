@@ -7,9 +7,9 @@
 /* storage control modules to the FatFs module with a defined API.       */
 /*-----------------------------------------------------------------------*/
 
-#include "../kernel/fs/fat/fat.h"        /* Obtains integer types */
-#include "../kernel/fs/fat/diskio.h"    /* Declarations of disk functions */
-#include <device/ata.h> /* ATA总线驱动程序 */
+#include "fat.h"        /* Obtains integer types */
+#include "diskio.h"    /* Declarations of disk functions */
+#include "device/ata.h" /* ATA总线驱动程序 */
 
 /* Definitions of physical drive number for each drive */
 #define DEV_RAM		0	/* Example: Map Ramdisk to physical drive 0 */

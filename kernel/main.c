@@ -60,19 +60,7 @@ void child()
     open("/dev/stdout",0);   // sys_open 打开标准输出
     // 打开键盘
     int fd = open("/dev/input",0);     // sys_open 打开键盘
-
     printf("fd is %d\n",fd);
 
-    for (int count = 0;count < 5;)
-    {
-        char buf;
-        int len = read(fd,&buf,1); // sys_read 读键盘
-
-        if(len) {
-            printf("get input %c\n", buf);
-            count++;
-        }
-        yield();    // sys_yield
-    }
-   exit();    // sys_exit
+    exit();    // sys_exit
 }

@@ -12,6 +12,7 @@
 #define ROOTFS_FILE 0
 #define ROOTFS_DIR 1
 #define ROOTFS_DEV 2
+#define ROOTFS_MOUNT 3
 
 // 先只做能显示文件名称的
 struct rootfs_dir_node {
@@ -23,6 +24,9 @@ struct rootfs_dev_node {
     int subtype;
     int nr;
     dev_t dev;
+};
+struct rootfs_mount_node {
+    struct super_block* mount_sb;
 };
 
 struct rootfs_inode {
@@ -218,6 +222,11 @@ static int rootfs_mknod(struct super_block* sb,const char* path,int subtype,int 
     dev_inode->file_size = sizeof (struct rootfs_inode);
 
     return add_new_inode(sb,path,dev_inode);
+}
+
+int mount(struct super_block* sb,const char* mount_path,const char* dev_path,const char* fs_name)
+{
+    
 }
 
 static struct super_operations rootfs_op = {

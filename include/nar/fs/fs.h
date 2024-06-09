@@ -53,6 +53,13 @@ struct super_block
     void* data;
 };
 
+#define O_APPEND 1
+#define O_RDONLY (1 << 1)
+#define O_WRONLY (1 << 2)
+#define O_CREAT (1 << 3)
+#define O_TRUNC (1 << 4)
+#define O_RDWR (O_WRONLY | O_RDONLY)
+
 // 超级块操作表
 struct super_operations
 {

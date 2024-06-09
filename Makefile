@@ -32,6 +32,7 @@ SOURCE:=$(wildcard \
 		$(DEVICE)/*.c \
 		$(LIB)/*.c \
 		$(KERNEL)/fs/*.c \
+		$(KERNEL)/fs/fat/*.c \
 		) #这里有编译顺序，head.s必须第一个编译
 
 
