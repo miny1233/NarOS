@@ -332,7 +332,7 @@ void* sbrk(struct mm_struct* mm,int increase)
 
 void* kbrk(int size)
 {
-    LOG("kbrk called size is: %d\n",size);
+    // LOG("kbrk called size is: %d\n",size);
     void* ret = ksbrk;
     ksbrk += size;
     return ret;

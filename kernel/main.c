@@ -65,10 +65,18 @@ void child()
     int hello = open("/home/hello.text",O_RDONLY);
     printf("hello fd: %d\n",hello);
 
+    if (hello == -1)
+    {
+        printf("open file fault!\n");
+        exit();
+    }
+
     char buf[512];
+    memset(buf,0,512);
     read(hello,buf,512);
 
     printf(buf);
+    printf("\n");
 
     exit();    // sys_exit
 }

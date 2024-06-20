@@ -7,8 +7,6 @@
 void assert_(const char* func,int LINE,char* FILE,char* msg);
 void panic(char* error);
 
-#define DEBUG
-
 #ifdef DEBUG
     #define LOG(...) printk("["__FILE_NAME__"] "__VA_ARGS__)
 #else
