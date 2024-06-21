@@ -46,17 +46,6 @@ install:
 	cp $(BUILD)/nar.img $(BUILD)/nar.os	# nar.os 绕过释放不了的锁
 .PHONY:install
 
-build:
-	$(GCC) $(DEBUG) $(INCLUDE) $(CFLAGS) $(SOURCE) -o $(BUILD)/nar
-	nasm boot/boot.s -o $(BUILD)/boot.bin
-	nasm boot/setup.s -o $(BUILD)/setup.bin
-	objcopy -O binary $(BUILD)/nar $(BUILD)/kernel.bin
-.PHONY:build
-
-asm:
-
-.PHONY:asm
-
 clean:
 	rm -f $(BUILD)/*.bin
 
@@ -77,14 +66,14 @@ QEMU_DEBUG:= -s -S
 
 .PHONY: qemu
 qemu: $(IMAGES)
-	make
+	make all
 	make install
 	make clean
 	$(QEMU) $(QEMU_DISK_BOOT)
 
 .PHONY: qemud
 qemud: $(IMAGES)
-	make
+	make all
 	make install
 	make clean
 	$(QEMU) $(QEMU_DEBUG) $(QEMU_DISK_BOOT)
