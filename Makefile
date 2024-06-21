@@ -35,20 +35,16 @@ SOURCE:=$(wildcard \
 		$(KERNEL)/fs/fat/*.c \
 		) #这里有编译顺序，head.s必须第一个编译
 
-
 all:
 	$(GCC) $(DEBUG) $(INCLUDE) $(CFLAGS) $(SOURCE) -o $(BUILD)/nar
-	#nasm boot/boot.s -o $(BUILD)/boot.bin
-	#nasm boot/setup.s -o $(BUILD)/setup.bin
-	#objcopy -O binary $(BUILD)/nar $(BUILD)/kernel.bin
-	#dd if=$(BUILD)/boot.bin   of=$(BUILD)/$(IMG) bs=512 count=1 conv=notrunc
-	#dd if=$(BUILD)/setup.bin  of=$(BUILD)/$(IMG) bs=512 count=1 seek=1 conv=notrunc
-	#dd if=$(BUILD)/kernel.bin of=$(BUILD)/$(IMG) bs=512 count=50 seek=2 conv=notrunc
+.PHONY:all
+
+install:
 	hdiutil mount $(BUILD)/nar.img
 	cp  $(BUILD)/nar /Volumes/NAR
 	hdiutil unmount /Volumes/NAR
 	cp $(BUILD)/nar.img $(BUILD)/nar.os	# nar.os 绕过释放不了的锁
-.PHONY:all
+.PHONY:install
 
 build:
 	$(GCC) $(DEBUG) $(INCLUDE) $(CFLAGS) $(SOURCE) -o $(BUILD)/nar
@@ -58,7 +54,7 @@ build:
 .PHONY:build
 
 asm:
-	$(GCC) -S $(INCLUDE) $(CFLAGS) $(KERNEL)/task.c -o $(BUILD)/nar.s
+
 .PHONY:asm
 
 clean:
@@ -82,11 +78,13 @@ QEMU_DEBUG:= -s -S
 .PHONY: qemu
 qemu: $(IMAGES)
 	make
+	make install
 	make clean
 	$(QEMU) $(QEMU_DISK_BOOT)
 
 .PHONY: qemud
 qemud: $(IMAGES)
 	make
+	make install
 	make clean
 	$(QEMU) $(QEMU_DEBUG) $(QEMU_DISK_BOOT)
