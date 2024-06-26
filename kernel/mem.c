@@ -449,7 +449,7 @@ static void kernel_pte_init()
     }
 
     //  映射APCI内存 （完全没用 无论如何读写都是0 需要一个IA32大佬）
-    /*
+
     page_entry_t *apic_pte = get_page();
     for (u32 index = 0; index < 1024; index++)
     {
@@ -458,10 +458,10 @@ static void kernel_pte_init()
         apic_pte[index].pwt = 1;
         apic_pte[index].pcd = 1;
     }
-    entry_init(page_table + DIDX(APIC_MASK), IDX(apic_pte),KERNEL_DPL);
-    (page_table + DIDX(APIC_MASK))->pwt = 1;
-    (page_table + DIDX(APIC_MASK))->pcd = 1;
-     */
+    entry_init((page_entry_t *) (page_dic + DIDX(APIC_MASK)), IDX(apic_pte), KERNEL_DPL);
+    ((page_entry_t *)page_dic + DIDX(APIC_MASK))->pwt = 1;
+    ((page_entry_t *)page_dic + DIDX(APIC_MASK))->pcd = 1;
+
 
     set_cr3(&page_dic); // cr3指向页目录
     enable_page();

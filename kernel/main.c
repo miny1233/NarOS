@@ -42,7 +42,7 @@ int init(unsigned long magic, multiboot_info_t* _info)
     heap_init();        // 堆内存管理
     vfs_init();       // 文件系统初始化
     //pipe_init();
-    //cpu_init();
+    cpu_init();
     // 外围设备
     keyboard_init();
 
@@ -77,6 +77,6 @@ void child()
 
     printf(buf);
     printf("\n");
-
+    
     exit();    // sys_exit
 }
