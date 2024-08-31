@@ -42,7 +42,7 @@ void* get_paddr(void* vaddr);
 
 void* kbrk(int);
 
-//为mmap预留
+// 为mmap预留
 struct vm_area_struct{
   u32 start_page;
   u32 end_page;
@@ -66,12 +66,16 @@ struct mm_struct{
 
     //u8* pm_bitmap; //物理内存使用位图 （暂时不记录，虽然会内存泄漏）
 };
+
 //给任务0的内存描述符初始化
 int init_mm_struct(struct mm_struct* mm);
-int fork_mm_struct(struct mm_struct* child,struct mm_struct* father);
+// int fork_mm_struct(struct mm_struct* child,struct mm_struct* father);
 
+// mm结构体的初始化
 void init_user_mm_struct(struct mm_struct* mm);
+void free_user_mm_struct(struct mm_struct* mm);
 
+// 堆空间的分配
 void* sbrk(struct mm_struct* mm,int increase);
 
 /* 透穿

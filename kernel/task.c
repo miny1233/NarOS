@@ -118,6 +118,21 @@ static void stack_init(void* entry,void* stack_top)
     stack->eflags= 582;
 }
 
+static void setup_pcb(pcb_t* pcb,const u32* const stack_top,u32 dpl)
+{
+    pcb->pid = ++pid_total;
+    pcb->next = running->next;
+    pcb->esp = (u32)stack_top - sizeof(interrupt_stack_frame);
+    pcb->ebp = (u32)stack_top;
+    pcb->dpl = dpl;
+}
+
+static inline void add_pcb_to_queue(pcb_t* pcb)
+{
+    running->next = pcb;
+    process_num++;
+}
+
 // 创建内核任务 需要提供程序入口
 task_t* task_create(void *entry) {
 
@@ -125,33 +140,23 @@ task_t* task_create(void *entry) {
         goto fail;
 
     set_interrupt_state(0); // 保证原子操作 否则可能会调度出错
-
     pcb_t* new_task = get_empty_pcb();
 
     //与主进程共享cr3
     new_task->mm = root_task_pcb.mm;
 
     // 为新任务设置内存
-    void* stack_top = sbrk(new_task->mm,PAGE_SIZE) + PAGE_SIZE;  // 栈顶
+    void* stack_top = kalloc(PAGE_SIZE) + PAGE_SIZE;  // 栈顶
     stack_init(entry,stack_top);
-
     // 设置进程信息
-    new_task->pid = ++pid_total;
-    new_task->next = running->next;
-    new_task->esp = (u32)stack_top - sizeof(interrupt_stack_frame);
-    new_task->ebp = (u32)stack_top;
-
-    new_task->dpl = 0;    // 内核态
-    //new_task->mm.kernel_stack = get_page(); //陷入内核态时堆栈
-
+    setup_pcb(new_task,stack_top,0);
     //下一个任务指向新任务
-    running->next = new_task;
-    process_num++;  //运行任务数+1
+    add_pcb_to_queue(new_task);
 
-    set_interrupt_state(1); //  任务创建完毕
+    set_interrupt_state(1); // 启动中断
     return new_task;
 
-    fail:
+fail:
     panic("Have Some Error in Task Create"); // 这个地方理论上不会发生 如果发生那么就是未知错误
     return 0;
 }
@@ -161,6 +166,10 @@ void task_exit()
 {
     set_interrupt_state(0);
 
+    /*
+     * 从链表中移除当前任务
+     * 并删除任务的记录
+     */
     task_t* back = get_root_task();// 任务0是常驻任务 从这个地方开始寻找的时间总是比从running开始快得多
     while (back->next != running){
        back = back->next;   // 找到自己的上一个任务
@@ -170,7 +179,12 @@ void task_exit()
     process_num--;  // 运行任务数-1
 
     //释放内存
-    kfree(running->mm);
+    if(running->dpl == 3)   // 如果是用户程序还需要释放mm
+    {
+        free_user_mm_struct(running->mm);
+    }
+
+    // 释放PCB
     kfree(running);
 
     set_interrupt_state(1);
@@ -182,8 +196,6 @@ void task_exit()
 pid_t exec(void* function,size_t len)
 {
     set_interrupt_state(0); // 保证原子操作 否则可能会调度出错
-    if(process_num > MAX_TASK_NUM) // 任务是否超过最大限度
-        goto fail;
 
     // 获取一个PCB
     pcb_t* new_task = get_empty_pcb();
@@ -196,7 +208,7 @@ pid_t exec(void* function,size_t len)
     // 复制代码段
     void* code_segment_begin = sbrk(child_mm,PAGE_SIZE);
     assert(len <= PAGE_SIZE);
-    void* entry = copy_to_mm_space(child_mm,code_segment_begin,function,len);
+    copy_to_mm_space(child_mm,code_segment_begin,function,len);
 
     // 为用户态程序创建ROP栈 注意需要使用透传
     void* stack_top = sbrk(child_mm,PAGE_SIZE);  // 栈顶
@@ -210,7 +222,7 @@ pid_t exec(void* function,size_t len)
     stack->esp = 0;    //IA32 popa忽略这个值
     stack->eip = (u32) function; // 注意正常执行需要使用entry作为入口
 
-    //设置段寄存器
+    // 设置段寄存器
     stack->cs = USER_CODE_SELECTOR;
     stack->gs = USER_DATA_SELECTOR;
     stack->ds = USER_DATA_SELECTOR;
@@ -220,27 +232,28 @@ pid_t exec(void* function,size_t len)
     stack->ss3 = USER_DATA_SELECTOR;
     stack->esp3 = (u32)stack_top;
 
-    //stack->eflags=582;
     stack->eflags = (0 << 12 | 0b10 | 1 << 9);
-
+    // 复制ROP栈
     copy_to_mm_space(child_mm,stack_top - sizeof(interrupt_stack_frame),stack,sizeof(interrupt_stack_frame));
 
     // 设置进程信息
-    new_task->pid = ++pid_total;
-    new_task->next = running->next;
-    new_task->esp = (u32)stack_top - sizeof(interrupt_stack_frame);
-    new_task->ebp = (u32)stack_top;
-
-    new_task->dpl = 3;    //用户态
-
-    running->next = new_task;
-    process_num++;  //运行任务数+1
+    setup_pcb(new_task,stack_top,3);
+    add_pcb_to_queue(new_task);
 
     set_interrupt_state(1); //  任务创建完毕
 
     return new_task->pid;
 
 fail:
+    return -1;
+}
+
+/*
+ *  下面是系统调用定义区
+ */
+
+pid_t sys_fork()
+{
     return -1;
 }
 

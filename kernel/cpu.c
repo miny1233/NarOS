@@ -8,6 +8,7 @@
 #include "nar/globa.h"
 #include "syscall.h"
 #include "nar/mem.h"
+#include "device/io.h"
 #include <nar/irq_vectors.h>
 
 #define CR0_PG (1 << 31)
@@ -34,11 +35,7 @@
 #define		APIC_LVR_DIRECTED_EOI	(1 << 24)
 #define		GET_APIC_VERSION(x)	((x) & 0xFFu)
 #define		GET_APIC_MAXLVT(x)	(((x) >> 16) & 0xFFu)
-#ifdef CONFIG_X86_32
-#  define	APIC_INTEGRATED(x)	((x) & 0xF0u)
-#else
-#  define	APIC_INTEGRATED(x)	(1)
-#endif
+#define	APIC_INTEGRATED(x)	((x) & 0xF0u)
 #define		APIC_XAPIC(x)		((x) >= 0x14)
 #define		APIC_EXT_SPACE(x)	((x) & 0x80000000)
 #define	APIC_TASKPRI	0x80
@@ -161,6 +158,23 @@
 
 #define mb() __asm__ __volatile__ ("lock; addl $0,0(%%esp)" : : : "memory")
 
+#define PC_CONF_INDEX		0x22
+#define PC_CONF_DATA		0x23
+
+#define PC_CONF_MPS_IMCR	0x70
+
+static inline u8 pc_conf_get(u8 reg)
+{
+    outb(reg, PC_CONF_INDEX);
+    return inb(PC_CONF_DATA);
+}
+
+static inline void pc_conf_set(u8 reg, u8 data)
+{
+    outb(reg, PC_CONF_INDEX);
+    outb(data, PC_CONF_DATA);
+}
+
 static u32 rdmsr(u32 addr)
 {
     u32 ret;
@@ -223,22 +237,40 @@ void cpuid(const u32 value,u32* const eax,u32* const ebx,u32* const ecx,u32* con
 
 u32 apic_read(u32 reg)
 {
-    disable_page();
     u32 value;
     mb();
     value = *(volatile u32 *)APIC_BASE + reg;
     mb();
-    enable_page();
     return value;
 }
 
 void apic_write(u32 reg,u32 value)
 {
-    disable_page();
     mb();
     *(volatile u32 *)(APIC_BASE + reg) = value;
     mb();
-    enable_page();
+}
+
+static inline void imcr_pic_to_apic(void)
+{
+    /* NMI and 8259 INTR go through APIC */
+    pc_conf_set(PC_CONF_MPS_IMCR, 0x01);
+}
+
+/*
+ * Get the LAPIC version
+ */
+static inline int lapic_get_version(void)
+{
+    return GET_APIC_VERSION(apic_read(APIC_LVR));
+}
+
+/*
+ * Check, if the APIC is integrated or a separate chip
+ */
+static inline int lapic_is_integrated(void)
+{
+    return APIC_INTEGRATED(lapic_get_version());
 }
 
 static int ap_id = 0;
@@ -249,8 +281,33 @@ __attribute__((unused)) void ap_initialize()
     printk("I am cpu %d !\n",apic_id);
 }
 
+void ap_init()
+{
+    // 复制AP启动代码到低1M内存
+    extern void apup();
+    memcpy((void*)0x0,apup,512);
+    // 为16位AP复制gdt_48 idt_48
+    __attribute__((unused)) extern pointer_t gdt_ptr;
+    __attribute__((unused)) extern pointer_t idt_48;
+    memcpy((void *) 0x1f0,&gdt_ptr,sizeof gdt_ptr);
+    memcpy((void *) 0x200,&idt_48,sizeof idt_48);
+
+    mfence();   // 内存屏障
+
+    u32* spurious = (u32*) SVR;
+    LOG("SVR: %x\n",*spurious);
+    // AP 启动序列
+    LOG("wake up ap!\n");
+    u32 *icr = (u32*)ICR_LOW;
+    *icr = 0xc4500;
+    //delay();  // 物理机要开，虚拟机就不用了
+    *icr = 0xc4600;
+    *icr = 0xc4600;
+}
+
 static void init_bsp_apic(void)
 {
+    LOG("Enable APIC\n");
     unsigned int value;
     /*
 	 * Enable APIC.
@@ -258,7 +315,11 @@ static void init_bsp_apic(void)
     value = apic_read(APIC_SPIV);
     value &= ~APIC_VECTOR_MASK;
     value |= APIC_SPIV_APIC_ENABLED;
-    value |= APIC_SPIV_FOCUS_DISABLED;
+    //if ((boot_cpu_data.x86_vendor == X86_VENDOR_INTEL) && (boot_cpu_data.x86 == 15))
+    if (0)
+        value &= ~APIC_SPIV_FOCUS_DISABLED;
+    else
+        value |= APIC_SPIV_FOCUS_DISABLED;
     value |= SPURIOUS_APIC_VECTOR;
     apic_write(APIC_SPIV, value);
 
@@ -267,11 +328,136 @@ static void init_bsp_apic(void)
 	 */
     apic_write(APIC_LVT0, APIC_DM_EXTINT);
     value = APIC_DM_NMI;
-    // if (!lapic_is_integrated())		/* 82489DX */
-       value |= APIC_LVT_LEVEL_TRIGGER;
+    if (!lapic_is_integrated())		/* 82489DX */
+        value |= APIC_LVT_LEVEL_TRIGGER;
     // if (apic_extnmi == APIC_EXTNMI_NONE)
         value |= APIC_LVT_MASKED;
     apic_write(APIC_LVT1, value);
+}
+
+/**
+ * setup_local_APIC - setup the local APIC
+ *
+ * Used to setup local APIC while initializing BSP or bringing up APs.
+ * Always called with preemption disabled.
+ */
+static void setup_local_APIC(void)
+{
+    unsigned int value;
+
+    /*
+     * If this comes from kexec/kcrash the APIC might be enabled in
+     * SPIV. Soft disable it before doing further initialization.
+     */
+    value = apic_read(APIC_SPIV);
+    value &= ~APIC_SPIV_APIC_ENABLED;
+    apic_write(APIC_SPIV, value);
+
+
+    /* Pound the ESR really hard over the head with a big hammer - mbligh */
+	if (lapic_is_integrated()) {
+		apic_write(APIC_ESR, 0);
+		apic_write(APIC_ESR, 0);
+		apic_write(APIC_ESR, 0);
+		apic_write(APIC_ESR, 0);
+	}
+
+    /*
+     * Intel recommends to set DFR, LDR and TPR before enabling
+     * an APIC.  See e.g. "AP-388 82489DX User's Manual" (Intel
+     * document number 292116).
+     *
+     *
+     */
+
+    /*
+     * Set Task Priority to 'accept all except vectors 0-31'.  An APIC
+     * vector in the 16-31 range could be delivered if TPR == 0, but we
+     * would think it's an exception and terrible things will happen.  We
+     * never change this later on.
+     */
+    value = apic_read(APIC_TASKPRI);
+    value &= ~APIC_TPRI_MASK;
+    value |= 0x10;
+    apic_write(APIC_TASKPRI, value);
+
+
+    /*
+     * Now that we are all set up, enable the APIC
+     */
+    value = apic_read(APIC_SPIV);
+    value &= ~APIC_VECTOR_MASK;
+    /*
+     * Enable APIC
+     */
+    value |= APIC_SPIV_APIC_ENABLED;
+
+#ifdef CONFIG_X86_32
+    /*
+	 * Some unknown Intel IO/APIC (or APIC) errata is biting us with
+	 * certain networking cards. If high frequency interrupts are
+	 * happening on a particular IOAPIC pin, plus the IOAPIC routing
+	 * entry is masked/unmasked at a high rate as well then sooner or
+	 * later IOAPIC line gets 'stuck', no more interrupts are received
+	 * from the device. If focus CPU is disabled then the hang goes
+	 * away, oh well :-(
+	 *
+	 * [ This bug can be reproduced easily with a level-triggered
+	 *   PCI Ne2000 networking cards and PII/PIII processors, dual
+	 *   BX chipset. ]
+	 */
+	/*
+	 * Actually disabling the focus CPU check just makes the hang less
+	 * frequent as it makes the interrupt distribution model be more
+	 * like LRU than MRU (the short-term load is more even across CPUs).
+	 */
+
+	/*
+	 * - enable focus processor (bit==0)
+	 * - 64bit mode always use processor focus
+	 *   so no need to set it
+	 */
+	value &= ~APIC_SPIV_FOCUS_DISABLED;
+#endif
+
+    /*
+     * Set spurious IRQ vector
+     */
+    value |= SPURIOUS_APIC_VECTOR;
+    apic_write(APIC_SPIV, value);
+
+    /*
+     * Set up LVT0, LVT1:
+     *
+     * set up through-local-APIC on the boot CPU's LINT0. This is not
+     * strictly necessary in pure symmetric-IO mode, but sometimes
+     * we delegate interrupts to the 8259A.
+     */
+    /*
+     * TODO: set up through-local-APIC from through-I/O-APIC? --macro
+     */
+    value = apic_read(APIC_LVT0) & APIC_LVT_MASKED;
+    value = APIC_DM_EXTINT;
+
+    apic_write(APIC_LVT0, value);
+
+    /*
+     * Only the BSP sees the LINT1 NMI signal by default. This can be
+     * modified by apic_extnmi= boot option.
+     */
+    value = APIC_DM_NMI;
+
+
+    /* Is 82489DX ? */
+    if (!lapic_is_integrated())
+        value |= APIC_LVT_LEVEL_TRIGGER;
+    apic_write(APIC_LVT1, value);
+
+#ifdef CONFIG_X86_MCE_INTEL
+    /* Recheck CMCI information after local APIC is up on CPU #0 */
+	if (!cpu)
+		cmci_recheck();
+#endif
 }
 
 void cpu_init()
@@ -287,8 +473,12 @@ void cpu_init()
         wrmsr(0x1b,apic_base);
     }else {
         LOG("not supported x2APIC\n");
-        init_bsp_apic();
+
     }
+
+    imcr_pic_to_apic();
+    setup_local_APIC();
+    init_bsp_apic();
 
     u32 apic_base;
     apic_base = rdmsr(0x1b);
@@ -299,29 +489,6 @@ void cpu_init()
     mb();
     printk("bsp apic id is %x\n",*(volatile u32 *)ICR_LOW);
     mb();
-    // 复制AP启动代码到低1M内存
-    extern void apup();
-    memcpy((void*)0x0,apup,512);
-    // 为16位AP复制gdt_48 idt_48
-    __attribute__((unused)) extern pointer_t gdt_ptr;
-    __attribute__((unused)) extern pointer_t idt_48;
-    memcpy((void *) 0x1f0,&gdt_ptr,sizeof gdt_ptr);
-    memcpy((void *) 0x200,&idt_48,sizeof idt_48);
-
-    disable_page();
-    mfence();   // 内存屏障
-
-    u32* spurious = (u32*) SVR;
-    LOG("SVR: %x\n",*spurious);
-    // AP 启动序列
-    LOG("wake up ap!\n");
-    u32 *icr = (u32*)ICR_LOW;
-    *icr = 0xc4500;
-    //delay();  // 物理机要开，虚拟机就不用了
-    *icr = 0xc4600;
-    *icr = 0xc4600;
-
-    enable_page();
 
 }
 

@@ -14,6 +14,7 @@
 #include <nar/fs/vfs.h>
 #include <nar/heap.h>
 #include <syscall.h>
+#include "nar/cpu.h"
 
 void child();
 multiboot_info_t* device_info;
@@ -27,8 +28,6 @@ static void check_grub(uint32_t magic)
         printk("boot by %s\n",device_info->boot_loader_name);
 }
 
-extern void cpu_init();
-
 int init(unsigned long magic, multiboot_info_t* _info)
 {
     device_init();      // 设备初始化
@@ -37,15 +36,16 @@ int init(unsigned long magic, multiboot_info_t* _info)
     check_grub(magic);  // 检查GRUB引导
     globa_init();       // 切换内核描述符表 设置TSS
     interrupt_init();   // 中断处理
+    // cpu_init();
     memory_init();      // 内存管理
     task_init();        // 进程管理
     heap_init();        // 堆内存管理
     vfs_init();       // 文件系统初始化
     //pipe_init();
-    cpu_init();
     // 外围设备
     keyboard_init();
 
+    ap_init();  // AP启动
 
     pid_t pid = exec(child,PAGE_SIZE);
     printk("child pid is %d\n",pid);
@@ -77,6 +77,6 @@ void child()
 
     printf(buf);
     printf("\n");
-    
+
     exit();    // sys_exit
 }

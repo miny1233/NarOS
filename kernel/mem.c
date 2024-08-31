@@ -243,7 +243,11 @@ static void page_int(int vector,
     if (dpl == 3 && vaddr < USER_VMA_START)
         goto segment_error;
 
-    // 取出内存描述符
+    /*
+     *  取出内存描述符
+     *  proxy_mm是为copy_to_mm_space设计的，当proxy_mm被设置后，
+     *  应该使用指定的mm所指向的内存空间
+     */
     struct mm_struct* mm = proxy_mm ? proxy_mm : running->mm;
 
     //检查是否在堆内存 内核进程跳过检查
@@ -294,12 +298,7 @@ check_passed:
     }
     else if (code->write)
     {
-        page_entry_t* pte = get_pte(vaddr);
-
-        LOG("present %d\n",pte->present);
-
-        goto ok;
-        //panic("write read-only mem\n");
+        panic("Not support Copy on Write!\n");
     }
 
     goto segment_error;
@@ -361,8 +360,13 @@ void init_user_mm_struct(struct mm_struct* mm)
     // 初始化堆
     mm->sbrk = USER_VMA_START;
     mm->brk = USER_VMA_START;
+
 }
 
+void free_user_mm_struct(struct mm_struct* mm)
+{
+
+}
 
 static void kernel_pte_init(); // 映射页
 
