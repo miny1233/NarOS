@@ -79,6 +79,10 @@ static int add_new_inode(struct super_block* sb,const char* path,struct rootfs_i
     for (;empty_pti->next != NULL;empty_pti = empty_pti->next);
 
     empty_pti->next = kalloc(sizeof (struct path_to_inode));
+
+    if (empty_pti->next)
+        return -1;
+
     empty_pti = empty_pti->next;
 
     empty_pti->next = NULL;

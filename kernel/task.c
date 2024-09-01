@@ -105,19 +105,40 @@ void task_init()
     LOG("load kernel task at pid 0\n");
 }
 
-// 初始化中断栈
-static void stack_init(void* entry,void* stack_top)
+// 初始化ROP中断栈
+static void setup_rop_stack(void* entry,interrupt_stack_frame* stack,int dpl)
 {
-    interrupt_stack_frame* stack = stack_top - sizeof(interrupt_stack_frame);
+    // interrupt_stack_frame* stack = stack_top - sizeof(interrupt_stack_frame);
     stack->ret = (u32)interrupt_handler_ret_0x20;  //需要使用取地址符号 外部声明是u32函数会被当作变量
     stack->vector = 0x20;
-    stack->ebp = (u32)stack_top;
+    stack->ebp = (u32)(stack + sizeof(interrupt_stack_frame)); // 栈顶
     stack->esp = (u32)&stack->eip;    //IA32中此值被忽略
     stack->eip = (u32)entry;
-    stack->cs = KERNEL_CODE_SELECTOR;
-    stack->eflags= 582;
-}
+    // 加载段选择子
+    if (dpl == 0) {
+        stack->cs = KERNEL_CODE_SELECTOR;
 
+        //stack->gs = KERNEL_DATA_SELECTOR;
+        //stack->ds = KERNEL_DATA_SELECTOR;
+        //stack->es = KERNEL_DATA_SELECTOR;
+        //stack->fs = KERNEL_DATA_SELECTOR;
+
+        stack->eflags = 582;
+    } else {
+        stack->cs = USER_CODE_SELECTOR;
+
+        stack->gs = USER_DATA_SELECTOR;
+        stack->ds = USER_DATA_SELECTOR;
+        stack->es = USER_DATA_SELECTOR;
+        stack->fs = USER_DATA_SELECTOR;
+
+        stack->ss3 = USER_DATA_SELECTOR;
+        stack->esp3 = stack->ebp;
+
+        stack->eflags = (0 << 12 | 0b10 | 1 << 9);
+    }
+}
+// 配置PCB
 static void setup_pcb(pcb_t* pcb,const u32* const stack_top,u32 dpl)
 {
     pcb->pid = ++pid_total;
@@ -147,7 +168,7 @@ task_t* task_create(void *entry) {
 
     // 为新任务设置内存
     void* stack_top = kalloc(PAGE_SIZE) + PAGE_SIZE;  // 栈顶
-    stack_init(entry,stack_top);
+    setup_rop_stack(entry,stack_top - sizeof(interrupt_stack_frame),0);
     // 设置进程信息
     setup_pcb(new_task,stack_top,0);
     //下一个任务指向新任务
@@ -196,7 +217,6 @@ void task_exit()
 pid_t exec(void* function,size_t len)
 {
     set_interrupt_state(0); // 保证原子操作 否则可能会调度出错
-
     // 获取一个PCB
     pcb_t* new_task = get_empty_pcb();
 
@@ -211,30 +231,14 @@ pid_t exec(void* function,size_t len)
     copy_to_mm_space(child_mm,code_segment_begin,function,len);
 
     // 为用户态程序创建ROP栈 注意需要使用透传
-    void* stack_top = sbrk(child_mm,PAGE_SIZE);  // 栈顶
+    void* stack_top = sbrk(child_mm,PAGE_SIZE) + PAGE_SIZE;  // 栈顶
     // ROP技术
-    interrupt_stack_frame temp_stack;
-    interrupt_stack_frame* stack = &temp_stack;
+    interrupt_stack_frame rop_stack;
 
-    stack->ret = (u32) interrupt_handler_ret_0x20;  //需要使用取地址符号 外部声明是u32函数会被当作变量
-    stack->vector = 0x20;
-    stack->ebp = (u32) stack_top;
-    stack->esp = 0;    //IA32 popa忽略这个值
-    stack->eip = (u32) function; // 注意正常执行需要使用entry作为入口
-
-    // 设置段寄存器
-    stack->cs = USER_CODE_SELECTOR;
-    stack->gs = USER_DATA_SELECTOR;
-    stack->ds = USER_DATA_SELECTOR;
-    stack->es = USER_DATA_SELECTOR;
-    stack->fs = USER_DATA_SELECTOR;
-
-    stack->ss3 = USER_DATA_SELECTOR;
-    stack->esp3 = (u32)stack_top;
-
-    stack->eflags = (0 << 12 | 0b10 | 1 << 9);
+    // 配置ROP栈
+    setup_rop_stack(function,&rop_stack,3);
     // 复制ROP栈
-    copy_to_mm_space(child_mm,stack_top - sizeof(interrupt_stack_frame),stack,sizeof(interrupt_stack_frame));
+    copy_to_mm_space(child_mm,stack_top - sizeof(interrupt_stack_frame),&rop_stack,sizeof(interrupt_stack_frame));
 
     // 设置进程信息
     setup_pcb(new_task,stack_top,3);
@@ -243,9 +247,6 @@ pid_t exec(void* function,size_t len)
     set_interrupt_state(1); //  任务创建完毕
 
     return new_task->pid;
-
-fail:
-    return -1;
 }
 
 /*

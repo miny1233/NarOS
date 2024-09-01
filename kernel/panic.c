@@ -2,12 +2,13 @@
 #include <nar/printk.h>
 #include <device/tty.h>
 
-void panic(char* error)
+_Noreturn void panic(char* error)
 {
     asm("cli");
     //tty_clear();
     printk("!!! PANIC !!!\n %s",error);
     asm("hlt");
+    while(1);
 }
 
 void assert_(const char* func,int LINE,char* FILE,char* msg)

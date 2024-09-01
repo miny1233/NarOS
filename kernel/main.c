@@ -42,7 +42,7 @@ int init(unsigned long magic, multiboot_info_t* _info)
     heap_init();        // 堆内存管理
     vfs_init();       // 文件系统初始化
     //pipe_init();
-    // 外围设备
+    // 设备初始化
     keyboard_init();
 
     ap_init();  // AP启动
