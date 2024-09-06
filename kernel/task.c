@@ -8,6 +8,7 @@
 #include <nar/panic.h>
 #include <nar/heap.h>
 #include <errno.h>
+#include <nar/fs/vfs.h>
 
 task_t *running;        // 当前运行的任务
 
@@ -106,36 +107,36 @@ void task_init()
 }
 
 // 初始化ROP中断栈
-static void setup_rop_stack(void* entry,interrupt_stack_frame* stack,int dpl)
+static void setup_rop_stack(interrupt_stack_frame* rop,void* stack,void* entry,int dpl)
 {
     // interrupt_stack_frame* stack = stack_top - sizeof(interrupt_stack_frame);
-    stack->ret = (u32)interrupt_handler_ret_0x20;  //需要使用取地址符号 外部声明是u32函数会被当作变量
-    stack->vector = 0x20;
-    stack->ebp = (u32)(stack + sizeof(interrupt_stack_frame)); // 栈顶
-    stack->esp = (u32)&stack->eip;    //IA32中此值被忽略
-    stack->eip = (u32)entry;
+    rop->ret = (u32)interrupt_handler_ret_0x20;  //需要使用取地址符号 外部声明是u32函数会被当作变量
+    rop->vector = 0x20;
+    rop->ebp = (u32)(stack + sizeof(interrupt_stack_frame)); // 栈顶
+    // rop->esp = (u32)&stack->eip;    //IA32中此值被忽略
+    rop->eip = (u32)entry;
     // 加载段选择子
     if (dpl == 0) {
-        stack->cs = KERNEL_CODE_SELECTOR;
+        rop->cs = KERNEL_CODE_SELECTOR;
 
-        //stack->gs = KERNEL_DATA_SELECTOR;
-        //stack->ds = KERNEL_DATA_SELECTOR;
-        //stack->es = KERNEL_DATA_SELECTOR;
-        //stack->fs = KERNEL_DATA_SELECTOR;
+        rop->gs = KERNEL_DATA_SELECTOR;
+        rop->ds = KERNEL_DATA_SELECTOR;
+        rop->es = KERNEL_DATA_SELECTOR;
+        rop->fs = KERNEL_DATA_SELECTOR;
 
-        stack->eflags = 582;
+        rop->eflags = 582;
     } else {
-        stack->cs = USER_CODE_SELECTOR;
+        rop->cs = USER_CODE_SELECTOR;
 
-        stack->gs = USER_DATA_SELECTOR;
-        stack->ds = USER_DATA_SELECTOR;
-        stack->es = USER_DATA_SELECTOR;
-        stack->fs = USER_DATA_SELECTOR;
+        rop->gs = USER_DATA_SELECTOR;
+        rop->ds = USER_DATA_SELECTOR;
+        rop->es = USER_DATA_SELECTOR;
+        rop->fs = USER_DATA_SELECTOR;
 
-        stack->ss3 = USER_DATA_SELECTOR;
-        stack->esp3 = stack->ebp;
+        rop->ss3 = USER_DATA_SELECTOR;
+        rop->esp3 = rop->ebp;
 
-        stack->eflags = (0 << 12 | 0b10 | 1 << 9);
+        rop->eflags = (0 << 12 | 0b10 | 1 << 9);
     }
 }
 // 配置PCB
@@ -168,7 +169,8 @@ task_t* task_create(void *entry) {
 
     // 为新任务设置内存
     void* stack_top = kalloc(PAGE_SIZE) + PAGE_SIZE;  // 栈顶
-    setup_rop_stack(entry,stack_top - sizeof(interrupt_stack_frame),0);
+    interrupt_stack_frame* rop = stack_top - sizeof(interrupt_stack_frame);
+    setup_rop_stack(rop,rop,entry,0);
     // 设置进程信息
     setup_pcb(new_task,stack_top,0);
     //下一个任务指向新任务
@@ -214,7 +216,7 @@ void task_exit()
 }
 
 // 加载函数到用户空间 并创建用户态进程
-pid_t exec(void* function,size_t len)
+pid_t sys_exec(void* function,size_t len)
 {
     set_interrupt_state(0); // 保证原子操作 否则可能会调度出错
     // 获取一个PCB
@@ -236,7 +238,7 @@ pid_t exec(void* function,size_t len)
     interrupt_stack_frame rop_stack;
 
     // 配置ROP栈
-    setup_rop_stack(function,&rop_stack,3);
+    setup_rop_stack(&rop_stack,stack_top - sizeof(interrupt_stack_frame),function,3);
     // 复制ROP栈
     copy_to_mm_space(child_mm,stack_top - sizeof(interrupt_stack_frame),&rop_stack,sizeof(interrupt_stack_frame));
 

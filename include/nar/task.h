@@ -83,6 +83,7 @@ struct kernel_clone_args
 };
 
 // 系统调用
+pid_t sys_exec(void* function,size_t len);
 void sys_yield();
 void sys_exit();
 pid_t sys_fork();

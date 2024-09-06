@@ -80,7 +80,7 @@ static int add_new_inode(struct super_block* sb,const char* path,struct rootfs_i
 
     empty_pti->next = kalloc(sizeof (struct path_to_inode));
 
-    if (empty_pti->next)
+    if (!empty_pti->next)
         return -1;
 
     empty_pti = empty_pti->next;
@@ -222,19 +222,19 @@ static int rootfs_mknod(struct super_block* sb,const char* path,int subtype,int 
     memcpy(dir,path,sep - path + 1);
 
     // 寻找路径对应的文件夹
-    struct rootfs_inode* dir_inode = find_inode_by_path(sb,dir);
-    if (!dir_inode)
-    {
-        return -1;  // 找不到路径
-    }
+    //struct rootfs_inode* dir_inode = find_inode_by_path(sb,dir);
+    //if (!dir_inode)
+    //{
+    //    return -1;  // 找不到路径
+    //}
 
-    struct rootfs_dir_node* dir_node = dir_inode->data;
-    for(;dir_node->next != NULL;dir_node = dir_node->next);
+    //struct rootfs_dir_node* dir_node = dir_inode->data;
+    //for(;dir_node->next != NULL;dir_node = dir_node->next);
 
     //创建节点映射
-    struct rootfs_dir_node* new_node = kalloc(sizeof (struct rootfs_dir_node));
-    dir_node->next = new_node;
-    strcpy(new_node->name,name);
+    //struct rootfs_dir_node* new_node = kalloc(sizeof (struct rootfs_dir_node));
+    //dir_node->next = new_node;
+    //strcpy(new_node->name,name);
 
     // 创建设备文件
     struct rootfs_dev_node* f_dev = kalloc(sizeof (struct rootfs_dev_node));
