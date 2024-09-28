@@ -13,7 +13,7 @@ int open(const char* path,char mode)
     return fd;
 }
 
-int read(int fd,char* buf,size_t buf_size)
+int read(int fd,const char* buf,size_t buf_size)
 {
     int ret;
     _syscall3(2,ret,fd,buf,buf_size);

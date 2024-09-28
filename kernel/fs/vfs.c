@@ -77,7 +77,6 @@ int sys_mknod(const char* path,int subtype,int nr)
 }
 
 // syscall
-
 int sys_open(const char* path,char mode)
 {
     // 取出fd表
@@ -87,13 +86,15 @@ int sys_open(const char* path,char mode)
 
     for (;fd < FD_NR;fd++)
     {
-        if (list[fd] == NULL) {
-            newInode = &list[fd];
-            break;
+        if (list[fd]) {
+            continue;
         }
+
+        newInode = &list[fd];
+        break;
     }
     // 打开的文件过多
-    if (newInode == NULL || fd >= FD_NR)
+    if (fd >= FD_NR)
         return -1;
 
     *newInode = open(path,mode);

@@ -55,7 +55,9 @@ struct vm_area_struct{
 
 //memory structure
 struct mm_struct{
-    page_entry_t* pde; // 页目录地址
+    void* pde_phy; // 页目录物理地址
+    page_entry_t* pde; // 页目录地址 (virtual)
+
     struct vm_area_struct* mmap; // vma
 
     char kernel_stack_start[4096]; // 陷入内核态时的栈地址
@@ -85,5 +87,8 @@ void* sbrk(struct mm_struct* mm,int increase);
 * 函数堆栈必须在内核区域内
 */
 void* copy_to_mm_space(struct mm_struct *mm,void* des,void* sou,size_t len);
+
+// syscall
+void* sys_sbrk(int increase);
 
 #endif //NAROS_MEM_H

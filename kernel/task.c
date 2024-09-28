@@ -181,7 +181,7 @@ task_t* task_create(void *entry) {
 
 fail:
     panic("Have Some Error in Task Create"); // 这个地方理论上不会发生 如果发生那么就是未知错误
-    return 0;
+    // return 0;
 }
 
 // 任务回收
@@ -238,7 +238,7 @@ pid_t sys_exec(void* function,size_t len)
     interrupt_stack_frame rop_stack;
 
     // 配置ROP栈
-    setup_rop_stack(&rop_stack,stack_top - sizeof(interrupt_stack_frame),function,3);
+    setup_rop_stack(&rop_stack,stack_top - sizeof(interrupt_stack_frame),code_segment_begin,3);
     // 复制ROP栈
     copy_to_mm_space(child_mm,stack_top - sizeof(interrupt_stack_frame),&rop_stack,sizeof(interrupt_stack_frame));
 

@@ -6,7 +6,7 @@
 #define NAROS_UNISTD_H
 
 int open(const char* path,char mode);
-int read(int fd,char* buf,size_t buf_size);
+int read(int fd,const char* buf,size_t buf_size);
 int write(int fd,const char* buf,size_t len);
 void yield();
 void exit();

@@ -147,7 +147,7 @@ void* get_page()
         if(page_map[index] == 0)
         {
             page_map[index] = 1;
-            //LOG(" get page 0x%x\n",PAGE(index));
+            // LOG(" get page 0x%x\n",PAGE(index));
             return PAGE(index);
         }
     }
@@ -158,7 +158,7 @@ void* get_page()
 void put_page(void* addr)
 {
     assert((u32)addr >= memory_base && (u32)addr < memory_base + memory_size); // 内存必须在可用区域
-    size_t index = IDX((u32)addr - memory_base);
+    size_t index = IDX((u32)addr);
     assert(index < total_page); //不能比总页面数大
     assert(page_map[index] != 0);//引用次数不能为0
     page_map[index]--;  // 内存引用次数减少
@@ -316,14 +316,31 @@ fault:
 }
 
 //推动堆指针
+
+/* note that:
+ * sbrk()参数函数中：
+ * 当increment为正值时，间断点位置向后移动increment字节,同时返回移动之前的位置。
+ * 当increment为负值时，位置向前移动increment字节，其返回值没有实际意义。
+ */
 void* sbrk(struct mm_struct* mm,int increase)
 {
-    void* ptr = NULL;
+    void* next_ptr = mm->sbrk + increase;
 
-    if(mm->sbrk + increase < (void*) USER_VMA_END)
-    {
-        ptr = mm->sbrk;
-        mm->sbrk += increase;
+    if (next_ptr < (void*)USER_VMA_START && next_ptr >= (void*)USER_VMA_END)
+        return (void*)-1; // sbrk error行为
+
+    void* ptr = mm->sbrk;
+    mm->sbrk += increase;
+
+    // 释放内存
+    if(increase < 0) {
+        size_t v_page_bg = ((size_t)next_ptr / PAGE_SIZE) + ((size_t)next_ptr % PAGE_SIZE);
+        size_t v_page_ed = ((size_t)ptr / PAGE_SIZE) + ((size_t)ptr % PAGE_SIZE);
+
+        for (size_t free_page = v_page_bg;free_page != v_page_ed;free_page++)
+        {
+            put_page((void *)(free_page * PAGE_SIZE));
+        }
     }
 
     return ptr;
@@ -332,8 +349,23 @@ void* sbrk(struct mm_struct* mm,int increase)
 void* kbrk(int size)
 {
     // LOG("kbrk called size is: %d\n",size);
+
     void* ret = ksbrk;
     ksbrk += size;
+
+    if (size < 0)
+    {
+        size_t v_page_bg = ((size_t)(ksbrk - 1))/PAGE_SIZE;
+        size_t v_page_ed = ((size_t)(ret - 1))/PAGE_SIZE;
+
+        for (size_t pg = v_page_bg;pg != v_page_ed;pg++)
+        {
+            // LOG("putting page %d\n",pg);
+            void* pg_paddr = get_paddr(PAGE(pg));
+            put_page(pg_paddr);
+        }
+    }
+
     return ret;
 }
 
@@ -341,6 +373,7 @@ void init_user_mm_struct(struct mm_struct* mm)
 {
     // 获得页目录内存
     size_t pde_mem = (size_t)kalloc(2 * PAGE_SIZE);
+    mm->pde_phy = (void*)pde_mem;
     // 4KB对齐
     pde_mem += PAGE_SIZE;
     pde_mem &= ~(0xfff);
@@ -470,5 +503,10 @@ static void kernel_pte_init()
     set_cr3(&page_dic); // cr3指向页目录
     enable_page();
 }
+// syscall
 
+void* sys_sbrk(int increase)
+{
+    return sbrk(running->mm,increase);
+}
 

@@ -19,6 +19,7 @@ void* syscall_list[] = {
         sys_exit,
         sys_yield,
         sys_exec,
+        sys_sbrk,
 };
 
 __attribute__((unused))

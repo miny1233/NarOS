@@ -28,6 +28,7 @@ static void check_grub(uint32_t magic)
         printk("boot by %s\n",device_info->boot_loader_name);
 }
 
+__attribute__((unused))
 int init(unsigned long magic, multiboot_info_t* _info)
 {
     device_init();      // 设备初始化
@@ -50,16 +51,17 @@ int init(unsigned long magic, multiboot_info_t* _info)
     pid_t pid = sys_exec(child,PAGE_SIZE);
     printk("child pid is %d\n",pid);
     //初始化完毕，初始化程序变idle程序
+
     return 0;
 }
 
 #include <unistd.h>
-// 用户态调试函数
+// 用户态调试函数 (位置相关代码会出现问题)
 void child()
 {
-    open("/dev/stdout",0);   // sys_open 打开标准输出
+    int fd = open("/dev/stdout",0);   // sys_open 打开标准输出
     // 打开键盘
-    int fd = open("/dev/input",0);     // sys_open 打开键盘
+    fd = open("/dev/input",0);     // sys_open 打开键盘
     printf("fd is %d\n",fd);
 
     int hello = open("/home/hello.text",O_RDONLY);
@@ -75,8 +77,7 @@ void child()
     memset(buf,0,512);
     read(hello,buf,512);
 
-    printf(buf);
-    printf("\n");
+    printf("%s\n",buf);
 
     exit();    // sys_exit
 }
